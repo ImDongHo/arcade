@@ -3,6 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>주차장 탈출</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -55,8 +62,46 @@ canvas{display:block;width:100%;height:auto;touch-action:none;user-select:none;-
 .banner .btns{justify-content:center}
 .busy{position:absolute;inset:12px;display:grid;place-content:center;color:var(--muted);font-family:var(--f-mono)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-</style>
 
+/* ---- touch / iPhone ---- */
+html{-webkit-text-size-adjust:100%}
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+button,summary{touch-action:manipulation}
+canvas{-webkit-touch-callout:none}
+.btn:disabled{opacity:.4;cursor:default}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.mobile-only{display:none}
+
+/* ---- phone layout: board first, compact status row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 24px)}
+  body.has-bar{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:12px}
+  header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0 12px}
+  .back{flex-basis:100%;font-size:13px}
+  h1{font-size:24px}
+  .mobile-only{display:inline-block}
+  .game{gap:10px}
+  .screen{padding:6px;border-radius:12px}
+  .banner,.busy{inset:6px}
+  .banner strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  .has-bar .side .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  .has-bar .side .btns .btn{padding:12px 0;font-size:15px}
+  .no-bar .side>.card:first-child .btns{display:none}
+}</style>
+<body class="has-bar">
 <div class="wrap">
   <header>
     <a class="back" href="../index.html">&larr; arcade</a>
@@ -66,7 +111,7 @@ canvas{display:block;width:100%;height:auto;touch-action:none;user-select:none;-
     <div class="screen">
       <canvas id="cvPark" aria-label="주차장 퍼즐 보드"></canvas>
       <div class="busy" id="pkBusy" hidden>퍼즐 생성 중…</div>
-      <div class="banner" id="pkWin">
+      <div class="banner" id="pkWin" hidden>
         <strong>탈출 성공</strong>
         <p id="pkWinText"></p>
         <div class="btns"><button class="btn primary" id="pkNext2">다음 스테이지</button></div>
@@ -88,15 +133,15 @@ canvas{display:block;width:100%;height:auto;touch-action:none;user-select:none;-
           <button class="btn primary" id="pkNext">다음</button>
         </div>
       </div>
-      <div class="card">
-        <h2>플레이 방법</h2>
+      <details class="card" data-auto>
+        <summary><h2>플레이 방법</h2></summary>
         <ul class="how">
-          <li>차를 드래그하면 앞뒤로만 움직여요.</li>
+          <li>차를 손가락(마우스)으로 끌면 앞뒤로만 움직여요.</li>
           <li>빨간 차를 오른쪽 출구로 빼내면 클리어예요.</li>
           <li>얼마나 멀리 밀든 한 번 놓으면 1수로 세요.</li>
         </ul>
         <p class="note">각 스테이지는 무작위 배치 수백 개를 만든 뒤, 모든 경우를 탐색해서 <b>풀 수 있고 가장 어려운 배치</b>를 골라요. 힌트도 같은 탐색기로 최적의 다음 수를 알려줘요.</p>
-      </div>
+      </details>
     </aside>
   </section>
 </div>
@@ -241,6 +286,7 @@ const Park=(()=>{
   return{frame};
 })();
 
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
 let last=performance.now();function loop(now){const dt=Math.min(50,now-last);last=now;try{Park.frame(now,dt)}catch(e){console.error(e)}requestAnimationFrame(loop)}requestAnimationFrame(loop);
 </script>
 </html>
