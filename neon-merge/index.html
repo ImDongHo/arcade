@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>네온 머지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content}.back:hover{color:var(--fg)}
+[hidden]{display:none!important}
+body{margin:0}
+/* Layout: arcade cabinet lab — tab strip over one framed screen with a spec panel beside it (stacks on phones). Single dark world by choice. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --cyan:#43f0ff; --pink:#ff4fd2; --amber:#ffc44d; --red:#ff4b5e; --green:#5dffa0;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:grid;gap:6px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);letter-spacing:.01em;line-height:1.15;margin:0;text-wrap:balance}
+h1 span{color:var(--cyan);text-shadow:0 0 18px rgba(67,240,255,.45)}
+.lede{color:var(--muted);margin:0;max-width:64ch}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{--c:var(--cyan);font:600 15px var(--f-body);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer;display:flex;gap:8px;align-items:center}
+.tab i{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.tab[aria-selected="true"]{color:var(--fg);border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c),0 0 22px -8px var(--c)}
+.tab:focus-visible,.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;background:#05070c;border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;justify-content:center;min-width:0}
+canvas{display:block;width:100%;height:auto;touch-action:none;user-select:none;-webkit-user-select:none}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid;gap:0}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 13px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--cyan);color:#041016;border-color:var(--cyan)}
+.how{margin:0;padding-left:18px;color:var(--fg);display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.note b{color:var(--fg);font-weight:600}
+.banner{position:absolute;inset:12px;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.82);border-radius:10px;backdrop-filter:blur(2px)}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
+.banner p{margin:0;color:var(--fg);font-family:var(--f-mono)}
+.banner .btns{justify-content:center}
+.busy{position:absolute;inset:12px;display:grid;place-content:center;color:var(--muted);font-family:var(--f-mono)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <a class="back" href="../index.html">&larr; arcade</a>
+    <h1>네온 <span>머지</span></h1>
+  </header>
+  <section class="game" id="g-merge">
+    <div class="screen">
+      <canvas id="cvMerge" aria-label="머지 게임 화면"></canvas>
+      <div class="banner" id="mgOver">
+        <strong>게임 오버</strong>
+        <p id="mgOverText"></p>
+        <div class="btns"><button class="btn primary" id="mgRestart2">다시 시작</button></div>
+      </div>
+      <div class="busy" id="mgFail" hidden>물리 엔진을 불러오지 못했어요. 새로고침해 주세요.</div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>점수</h2>
+        <dl class="stats">
+          <div><dt>점수</dt><dd id="mgScore">0</dd></div>
+          <div><dt>최고 점수</dt><dd id="mgBest">0</dd></div>
+          <div><dt>최고 단계</dt><dd id="mgTop">2</dd></div>
+          <div><dt>공 개수</dt><dd id="mgCount">0</dd></div>
+        </dl>
+        <div class="btns"><button class="btn" id="mgRestart">다시 시작</button></div>
+      </div>
+      <div class="card">
+        <h2>플레이 방법</h2>
+        <ul class="how">
+          <li>마우스(터치)로 위치를 정하고 클릭하면 공이 떨어져요.</li>
+          <li>같은 숫자끼리 닿으면 합쳐져서 두 배가 돼요.</li>
+          <li>공이 분홍 선 위에 2초 넘게 머물면 게임 오버예요.</li>
+        </ul>
+        <p class="note">2048까지 만들 수 있어요. 오른쪽 위에 다음 공이 미리 보여요.</p>
+      </div>
+    </aside>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const dpr=Math.min(2,window.devicePixelRatio||1);
+function setupCanvas(cv,w,h){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);cv.style.maxWidth=w+'px';const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);return ctx}
+function toLocal(cv,e,w){const r=cv.getBoundingClientRect(),s=w/r.width;return[(e.clientX-r.left)*s,(e.clientY-r.top)*s]}
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+/* ================= MERGE ================= */
+const Merge=(()=>{
+  const W=360,H=560,LINE=104,TOP=56;
+  const cv=$('#cvMerge'),ctx=setupCanvas(cv,W,H);
+  if(!window.Matter){$('#mgFail').hidden=false;return{frame(){}}}
+  const{Engine,Bodies,Composite,Events}=Matter;
+  const RAD=[14,19,25,31,38,46,54,63,73,84,96];
+  const COL=['#43f0ff','#5dffa0','#c6ff4d','#ffc44d','#ff8a3d','#ff4b5e','#ff4fd2','#b38bff','#6b9cff','#9ffcff','#ffffff'];
+  const W8=[.34,.28,.2,.12,.06];
+  let engine,score,best=store.get('mg_best',0),cur,nxt,dropX=W/2,cool=0,over=false,fx=[],queue=[],danger=0,acc=0,top=0,R=mulberry(Date.now()%1e9);
+  const rnd=()=>{let r=R(),i=0;while(r>W8[i]){r-=W8[i];i++}return i};
+  function make(t,x,y){const b=Bodies.circle(x,y,RAD[t],{restitution:.12,friction:.25,frictionStatic:.4,frictionAir:.008,density:.0012*(1+t*.05)});b.tier=t;b.born=performance.now();Composite.add(engine.world,b);top=Math.max(top,t);return b}
+  function reset(){
+    engine=Engine.create();engine.gravity.y=1.1;
+    Composite.add(engine.world,[Bodies.rectangle(W/2,H+30,W+200,60,{isStatic:true}),Bodies.rectangle(-30,H/2,60,H*3,{isStatic:true}),Bodies.rectangle(W+30,H/2,60,H*3,{isStatic:true})]);
+    Events.on(engine,'collisionStart',e=>{for(const p of e.pairs){const a=p.bodyA,b=p.bodyB;if(a.tier==null||a.tier!==b.tier||a.gone||b.gone)continue;a.gone=b.gone=true;queue.push([a,b])}});
+    score=0;cur=rnd();nxt=rnd();over=false;fx=[];queue=[];danger=0;top=1;$('#mgOver').hidden=true;hud();
+  }
+  function hud(){$('#mgScore').textContent=score;$('#mgBest').textContent=best;$('#mgTop').textContent=2**(top+1);$('#mgCount').textContent=engine?Composite.allBodies(engine.world).filter(b=>b.tier!=null).length:0}
+  function drop(){if(over||cool>0)return;const r=RAD[cur];make(cur,Math.max(r+2,Math.min(W-r-2,dropX)),TOP);cur=nxt;nxt=rnd();cool=480;hud()}
+  cv.addEventListener('pointermove',e=>{dropX=toLocal(cv,e,W)[0]});
+  cv.addEventListener('pointerdown',e=>{dropX=toLocal(cv,e,W)[0]});
+  cv.addEventListener('pointerup',e=>{dropX=toLocal(cv,e,W)[0];drop()});
+  $('#mgRestart').onclick=$('#mgRestart2').onclick=reset;
+
+  function circle(t,x,y,a=1){
+    const r=RAD[t],c=COL[t];
+    ctx.save();ctx.globalAlpha=a;ctx.shadowColor=c;ctx.shadowBlur=14;
+    ctx.beginPath();ctx.arc(x,y,r-1.5,0,7);ctx.fillStyle='#0b0f19';ctx.fill();
+    ctx.lineWidth=3;ctx.strokeStyle=c;ctx.stroke();ctx.shadowBlur=0;
+    ctx.beginPath();ctx.arc(x,y,r*.68,0,7);ctx.lineWidth=1.2;ctx.globalAlpha=a*.35;ctx.stroke();ctx.globalAlpha=a;
+    const lab=String(2**(t+1));ctx.fillStyle=c;ctx.font=`700 ${Math.max(10,Math.min(r*.75,r*1.5/lab.length*1.1))}px "JetBrains Mono",monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,x,y+1);
+    ctx.restore();
+  }
+  function frame(now,dt){
+    if(!over){
+      acc+=dt;let n=0;
+      while(acc>=1000/60&&n<3){Engine.update(engine,1000/60);acc-=1000/60;n++;
+        for(const[a,b]of queue){
+          Composite.remove(engine.world,a);Composite.remove(engine.world,b);
+          const t=a.tier,x=(a.position.x+b.position.x)/2,y=(a.position.y+b.position.y)/2;
+          if(t<10){make(t+1,x,y);score+=(t+2)*(t+1)}else score+=500;
+          fx.push({x,y,r:RAD[Math.min(t+1,10)],c:COL[Math.min(t+1,10)],t0:now});
+        }
+        if(queue.length){queue=[];hud()}
+      }
+      if(acc>100)acc=0;
+      cool=Math.max(0,cool-dt);
+      let above=false;
+      for(const b of Composite.allBodies(engine.world)){if(b.tier==null)continue;if(now-b.born>1200&&b.position.y-RAD[b.tier]<LINE&&Math.abs(b.velocity.y)<1.5)above=true}
+      danger=above?danger+dt:Math.max(0,danger-dt*2);
+      if(danger>2000){over=true;if(score>best){best=score;store.set('mg_best',best)}$('#mgOverText').textContent=`점수 ${score} · 최고 단계 ${2**(top+1)}`;$('#mgOver').hidden=false;hud()}
+    }
+    ctx.clearRect(0,0,W,H);
+    rr(ctx,0,0,W,H,12);ctx.fillStyle='#070a12';ctx.fill();
+    ctx.strokeStyle='rgba(130,150,200,.05)';ctx.lineWidth=1;
+    for(let y=LINE+20;y<H;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+    const dl=Math.min(1,danger/2000);
+    ctx.save();ctx.setLineDash([8,8]);ctx.lineDashOffset=-now*.03;ctx.strokeStyle=`rgba(255,79,210,${.35+dl*.65})`;ctx.shadowColor='#ff4fd2';ctx.shadowBlur=dl*20;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,LINE);ctx.lineTo(W,LINE);ctx.stroke();ctx.restore();
+    if(!over){
+      const r=RAD[cur],x=Math.max(r+2,Math.min(W-r-2,dropX));
+      ctx.save();ctx.setLineDash([2,6]);ctx.strokeStyle='rgba(231,234,244,.18)';ctx.beginPath();ctx.moveTo(x,TOP+r);ctx.lineTo(x,H);ctx.stroke();ctx.restore();
+      circle(cur,x,TOP,cool>0?.35:1);
+    }
+    for(const b of Composite.allBodies(engine.world))if(b.tier!=null)circle(b.tier,b.position.x,b.position.y);
+    fx=fx.filter(f=>now-f.t0<420);
+    for(const f of fx){const t=(now-f.t0)/420;ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle=f.c;ctx.shadowColor=f.c;ctx.shadowBlur=20;ctx.lineWidth=3*(1-t)+1;ctx.beginPath();ctx.arc(f.x,f.y,f.r*(1+t*.9),0,7);ctx.stroke();ctx.restore()}
+    // next preview
+    ctx.save();ctx.fillStyle='rgba(139,147,173,.9)';ctx.font='600 11px "IBM Plex Sans KR",sans-serif';ctx.textAlign='right';ctx.fillText('다음',W-44,24);ctx.restore();
+    ctx.save();ctx.translate(W-24,26);ctx.scale(14/RAD[nxt],14/RAD[nxt]);circle(nxt,0,0,.9);ctx.restore();
+    if(danger>0&&!over){ctx.fillStyle=`rgba(255,79,210,${dl})`;ctx.font='700 12px "JetBrains Mono",monospace';ctx.textAlign='left';ctx.fillText(`위험 ${(2-danger/1000).toFixed(1)}s`,10,LINE-8)}
+  }
+  reset();
+  return{frame};
+})();
+
+let last=performance.now();function loop(now){const dt=Math.min(50,now-last);last=now;try{Merge.frame(now,dt)}catch(e){console.error(e)}requestAnimationFrame(loop)}requestAnimationFrame(loop);
+</script>
+</html>
