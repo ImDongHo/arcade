@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <filter id="g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="cells" x="64" y="4" width="32" height="32" patternUnits="userSpaceOnUse"><rect x=".5" y=".5" width="31" height="31" fill="none" stroke="#8296c8" stroke-opacity=".1" stroke-dasharray="3 4"/></pattern>
+  </defs>
+  <rect width="320" height="200" fill="#070a12"/>
+  <rect x="64" y="4" width="192" height="192" fill="url(#cells)"/>
+  <rect x="62" y="2" width="196" height="196" rx="10" fill="none" stroke="#20283a" stroke-width="2"/>
+  <!-- exit -->
+  <g filter="url(#g)" stroke="#ffc44d" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M258 69 H290 M258 99 H290"/>
+    <path d="M268 77 l7 7 -7 7">
+      <animateTransform attributeName="transform" type="translate" values="0 0;12 0;0 0" dur="1.2s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  <g filter="url(#g)" stroke-width="2.5">
+    <!-- red car -->
+    <rect x="72" y="72" width="54" height="24" rx="7" fill="#ff4b5e" fill-opacity=".22" stroke="#ff4b5e" stroke-width="3"/>
+    <!-- vertical blockers -->
+    <rect x="136" y="40" width="24" height="86" rx="7" fill="#10141e" stroke="#ffc44d"/>
+    <rect x="200" y="72" width="24" height="54" rx="7" fill="#10141e" stroke="#43f0ff"/>
+    <rect x="72" y="136" width="24" height="54" rx="7" fill="#10141e" stroke="#5dffa0"/>
+    <!-- horizontal -->
+    <rect x="72" y="8" width="86" height="24" rx="7" fill="#10141e" stroke="#b38bff"/>
+    <rect x="168" y="8" width="54" height="24" rx="7" fill="#10141e" stroke="#ff4fd2"/>
+    <rect x="104" y="136" width="86" height="24" rx="7" fill="#10141e" stroke="#6b9cff"/>
+    <rect x="168" y="168" width="54" height="24" rx="7" fill="#10141e" stroke="#ff8a3d"/>
+    <rect x="232" y="104" width="20" height="54" rx="7" fill="#10141e" stroke="#c6ff4d"/>
+  </g>
+  <text x="99" y="89" fill="#ffd6db" font-family="Consolas,monospace" font-weight="700" font-size="16" text-anchor="middle">»</text>
+</svg>

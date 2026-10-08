@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="dots" width="32" height="32" patternUnits="userSpaceOnUse"><rect x="3" y="3" width="26" height="26" rx="5" fill="#8296c8" fill-opacity=".06"/></pattern>
+  </defs>
+  <rect width="320" height="200" fill="#070a12"/>
+  <rect width="320" height="200" fill="url(#dots)"/>
+  <!-- wall -->
+  <rect x="227" y="99" width="26" height="26" rx="4" fill="#1d2333" stroke="#323b52"/>
+  <!-- beam -->
+  <g filter="url(#g)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M48 144 H144 V48 H272 V176" stroke="#43f0ff" stroke-opacity=".3" stroke-width="12"/>
+    <path d="M48 144 H144 V48 H272 V176" stroke="#43f0ff" stroke-width="4"/>
+  </g>
+  <path d="M48 144 H144 V48 H272 V176" fill="none" stroke="#e9fdff" stroke-width="2" stroke-dasharray="6 14" stroke-linecap="round">
+    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="0.8s" repeatCount="indefinite"/>
+  </path>
+  <!-- emitter -->
+  <g filter="url(#g)"><rect x="34" y="130" width="28" height="28" rx="6" fill="#2a0f27" stroke="#ff4fd2" stroke-width="2.5"/><circle cx="56" cy="144" r="4" fill="#ffd0f4"/></g>
+  <!-- mirrors -->
+  <g filter="url(#g)" stroke="#f1ecff" stroke-width="6" stroke-linecap="round">
+    <line x1="134" y1="154" x2="154" y2="134"/>
+    <line x1="134" y1="58" x2="154" y2="38"/>
+    <line x1="262" y1="38" x2="282" y2="58"/>
+  </g>
+  <!-- targets (lit) -->
+  <g filter="url(#g)">
+    <circle cx="96" cy="144" r="10" fill="none" stroke="#ffc44d" stroke-width="3"/><circle cx="96" cy="144" r="5" fill="#ffe3a0"/>
+    <circle cx="208" cy="48" r="10" fill="none" stroke="#ffc44d" stroke-width="3"/><circle cx="208" cy="48" r="5" fill="#ffe3a0"/>
+  </g>
+  <circle cx="208" cy="144" r="10" fill="none" stroke="#ffc44d" stroke-opacity=".5" stroke-width="3"/><circle cx="208" cy="144" r="2.5" fill="#ffc44d" fill-opacity=".5"/>
+</svg>
