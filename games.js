@@ -19,8 +19,8 @@ window.GAMES = [
     url: "parking-escape/index.html",
     thumb: "parking-escape/thumb.svg",
     color: "#ff4b5e",
-    status: "proto",
-    meta: "무한 스테이지",
+    status: "play",
+    meta: "30스테이지 · 3챕터",
     tags: ["퍼즐", "최소 수 계산"]
   },
   {
