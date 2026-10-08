@@ -5,12 +5,10 @@
 <title>네온 머지</title>
 <meta name="theme-color" content="#0a0c13">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="arcade">
 <link rel="apple-touch-icon" href="../icons/icon-180.png">
 <script src="../shared/zoom-reset.js" defer></script>
-<link rel="manifest" href="../manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -229,6 +227,7 @@ const Merge=(()=>{
 })();
 
 if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+{const sc=document.querySelector('.screen');let lastTap=0;sc.addEventListener('touchend',e=>{if(e.timeStamp-lastTap<400)e.preventDefault();lastTap=e.timeStamp},{passive:false});sc.addEventListener('dblclick',e=>e.preventDefault());['gesturestart','gesturechange'].forEach(n=>sc.addEventListener(n,e=>e.preventDefault()))}
 let last=performance.now();function loop(now){const dt=Math.min(50,now-last);last=now;try{Merge.frame(now,dt)}catch(e){console.error(e)}requestAnimationFrame(loop)}requestAnimationFrame(loop);
 </script>
 </html>
