@@ -30,8 +30,8 @@ window.GAMES = [
     url: "neon-merge/index.html",
     thumb: "neon-merge/thumb.svg",
     color: "#ff4fd2",
-    status: "proto",
-    meta: "점수 경쟁",
-    tags: ["아케이드", "물리"]
+    status: "play",
+    meta: "점수 경쟁 · 콤보",
+    tags: ["아케이드", "물리", "효과음"]
   }
 ];
