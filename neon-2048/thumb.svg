@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs>
+    <filter id="g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="320" height="200" fill="#070912"/>
+  <rect x="78" y="14" width="164" height="172" rx="12" fill="#0b0f1c" stroke="#20283a" stroke-width="2"/>
+  <g fill="#0f1424" stroke="#182036">
+    <rect x="88" y="24" width="34" height="34" rx="6"/><rect x="128" y="24" width="34" height="34" rx="6"/><rect x="168" y="24" width="34" height="34" rx="6"/><rect x="208" y="24" width="24" height="34" rx="6"/>
+  </g>
+  <g font-family="Consolas,monospace" font-weight="700" text-anchor="middle" dominant-baseline="central">
+    <g filter="url(#g)" stroke-width="2.5">
+      <rect x="88" y="64" width="70" height="56" rx="9" fill="#13201f" stroke="#43f0ff"/>
+      <rect x="164" y="64" width="68" height="56" rx="9" fill="#261d10" stroke="#ffc44d"/>
+      <rect x="88" y="126" width="70" height="52" rx="9" fill="#2a1024" stroke="#ff4fd2"/>
+      <rect x="164" y="126" width="68" height="52" rx="9" fill="#2a2614" stroke="#fff3b0"/>
+      <rect x="128" y="24" width="34" height="34" rx="6" fill="#1a1a24" stroke="#ffffff"/>
+    </g>
+    <text x="123" y="92" fill="#43f0ff" font-size="22">4</text>
+    <text x="198" y="92" fill="#ffc44d" font-size="22">32</text>
+    <text x="123" y="152" fill="#ff4fd2" font-size="20">256</text>
+    <text x="198" y="152" fill="#fff3b0" font-size="17">2048</text>
+    <text x="145" y="42" fill="#ffffff" font-size="18">★</text>
+  </g>
+  <g fill="#ffc44d" opacity=".9"><rect x="250" y="40" width="5" height="9" transform="rotate(25 252 44)"/><rect x="266" y="70" width="5" height="9" transform="rotate(-20 268 74)" fill="#43f0ff"/><rect x="56" y="60" width="5" height="9" transform="rotate(30 58 64)" fill="#ff4fd2"/><rect x="44" y="120" width="5" height="9" transform="rotate(-35 46 124)" fill="#5dffa0"/><rect x="262" y="140" width="5" height="9" transform="rotate(15 264 144)"/></g>
+</svg>

@@ -88,5 +88,16 @@ window.GAMES = [
     status: "play",
     meta: "30스테이지 · 3챕터",
     tags: ["퍼즐", "드래그"]
+  },
+  {
+    id: "neon-2048",
+    title: "네온 2048",
+    desc: "밀어서 같은 숫자를 합치는 2048, 별 타일과 끝없는 목표",
+    url: "neon-2048/index.html",
+    thumb: "neon-2048/thumb.svg",
+    color: "#ffc44d",
+    status: "play",
+    meta: "무한 모드 · 되돌리기",
+    tags: ["퍼즐", "스와이프"]
   }
 ];
