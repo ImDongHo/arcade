@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>색 정렬 튜브</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: lab bench — glass tubes on a dark bench + record panel on top, stage map below. Single dark world by choice. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --cyan:#43f0ff; --pink:#ff4fd2; --amber:#ffc44d; --green:#5dffa0;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --slot:38px; --ball:32px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:22px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content;margin-bottom:-14px}
+.back:hover{color:var(--fg)}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:var(--cyan);text-shadow:0 0 18px rgba(67,240,255,.45)}
+.chap{font:600 14px var(--f-body);color:var(--muted);letter-spacing:.04em}
+.chap b{color:var(--fg)}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;min-width:0}
+.bench{background:radial-gradient(120% 80% at 50% 100%,#141a2e 0%,#05070c 70%);border:1px solid var(--line);border-radius:16px;padding:30px 8px 22px;min-height:320px;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:22px 12px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.tube{position:relative;width:calc(var(--ball) + 12px);height:calc(var(--slot)*4 + 14px);border:2px solid #34405a;border-top:none;border-radius:0 0 24px 24px;background:linear-gradient(90deg,rgba(255,255,255,.04),rgba(255,255,255,0) 40%,rgba(255,255,255,.05));cursor:pointer;transition:transform .16s ease,border-color .16s,box-shadow .2s;padding:0 0 6px;font:inherit;color:inherit;display:flex;flex-direction:column-reverse;align-items:center;gap:calc(var(--slot) - var(--ball));touch-action:manipulation}
+.tube::before{content:"";position:absolute;left:-6px;right:-6px;top:-2px;height:4px;border-radius:3px;background:#34405a}
+.tube.sel{transform:translateY(-16px);border-color:var(--cyan);box-shadow:0 0 18px rgba(67,240,255,.25)}
+.tube.sel::before{background:var(--cyan)}
+.tube.done{border-color:var(--c);box-shadow:0 0 22px color-mix(in srgb,var(--c) 45%,transparent)}
+.tube.done::before{background:var(--c)}
+.tube.hint{animation:hint .9s ease-in-out infinite}
+.tube.hint.to{animation-name:hintTo}
+.tube.bad{animation:bad .28s}
+@keyframes hint{50%{box-shadow:0 0 0 3px var(--amber),0 0 22px rgba(255,196,77,.5)}}
+@keyframes hintTo{50%{box-shadow:0 0 0 3px var(--cyan),0 0 22px rgba(67,240,255,.5)}}
+@keyframes bad{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.tube:focus-visible,.btn:focus-visible,.tile:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.ball{width:var(--ball);height:var(--ball);border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.75) 0 12%,var(--c) 13% 55%,color-mix(in srgb,var(--c) 45%,#000) 100%);box-shadow:0 0 12px color-mix(in srgb,var(--c) 60%,transparent)}
+.fly{position:fixed;z-index:30;pointer-events:none;margin:0}
+.msg{min-height:22px;margin:8px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 13px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:var(--cyan);color:#041016;border-color:var(--cyan)}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.banner{position:absolute;inset:0;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.86);border-radius:16px;z-index:5;padding:16px}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
+.banner .badge{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 12px rgba(67,240,255,.6)}
+.banner p{margin:0;font-family:var(--f-mono)}
+.banner .btns{justify-content:center}
+.map{display:grid;gap:16px}
+.map-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.map-head h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0}
+.dev{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.chapter{display:grid;gap:8px}
+.chapter h3{margin:0;font:600 14px var(--f-body);color:var(--muted)}
+.chapter h3 b{color:var(--fg);margin-right:6px}
+.tiles{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}
+@media (max-width:560px){.tiles{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.tile{background:#121725;border:1px solid var(--line);border-radius:10px;padding:6px 2px 4px;color:var(--fg);cursor:pointer;display:grid;justify-items:center;font-family:var(--f-mono);touch-action:manipulation}
+.tile .n{font-weight:700;font-size:15px}
+.tile .s{font-size:11px;color:#2e3548;min-height:16px}
+.tile.clear .s{color:var(--green)}
+.tile.perfect{border-color:rgba(67,240,255,.5);box-shadow:inset 0 0 12px rgba(67,240,255,.22)}
+.tile.perfect .s{color:var(--cyan)}
+.tile .d{font-size:10px;color:var(--muted)}
+.tile[aria-current="true"]{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan) inset,0 0 16px -6px var(--cyan)}
+.tile:disabled{opacity:.35;cursor:default}
+@media (max-width:380px){:root{--slot:34px;--ball:28px}.bench{gap:20px 9px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- phone layout: board first, compact status row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:12px}
+  .back{margin-bottom:0;font-size:13px}
+  header{gap:0 12px}
+  h1{font-size:24px}
+  .chap{font-size:12px;letter-spacing:0}
+  .game{gap:10px}
+  .bench{padding:26px 6px 18px;border-radius:12px;min-height:0}
+  .banner{border-radius:12px}
+  .banner strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  .side .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  .side .btns .btn{padding:12px 0;font-size:15px}
+  .map-head h2{font-size:20px}
+}
+</style>
+
+<div class="wrap">
+  <a class="back" href="../index.html">&larr; arcade</a>
+  <header>
+    <h1>색 정렬 <span>튜브</span></h1>
+    <div class="chap" id="chapLabel"></div>
+  </header>
+
+  <section class="game">
+    <div class="screen">
+      <div class="bench" id="bench" aria-label="튜브 놓는 곳"></div>
+      <div class="banner" id="win" hidden>
+        <strong>클리어!</strong>
+        <div class="badge" id="winBadge" hidden></div>
+        <p id="winText"></p>
+        <div class="btns"><button class="btn" id="winRetry">다시 하기</button><button class="btn primary" id="winNext">다음 스테이지</button></div>
+      </div>
+      <p class="msg" id="msg" aria-live="polite"></p>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>현재 스테이지</h2>
+        <dl class="stats">
+          <div><dt>스테이지</dt><dd id="sStage">-</dd></div>
+          <div><dt>이동</dt><dd id="sMoves">0</dd></div>
+          <div><dt>최소</dt><dd id="sMin">-</dd></div>
+          <div><dt>내 기록</dt><dd id="sBest">-</dd></div>
+        </dl>
+        <div class="btns">
+          <button class="btn" id="bHint">힌트</button>
+          <button class="btn" id="bUndo">되돌리기</button>
+          <button class="btn" id="bReset">다시</button>
+          <button class="btn" id="bSound" aria-pressed="true">소리</button>
+        </div>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>플레이 방법</h2></summary>
+        <ul class="how">
+          <li>튜브를 탭해서 고르고, 옮길 튜브를 다시 탭하면 맨 위 구슬이 옮겨져요.</li>
+          <li>빈 튜브나, 맨 위가 같은 색인 튜브에만 넣을 수 있어요. 같은 색이 붙어 있으면 들어갈 만큼 한꺼번에 옮겨져요.</li>
+          <li>모든 튜브를 한 가지 색 4개씩으로 맞추면 클리어예요.</li>
+          <li>깬 스테이지에는 ✓가 붙고, 최소 이동 수로 깨면 은은하게 빛나요.</li>
+          <li>힌트는 가장 빠른 다음 한 수를 알려줘요. 마음껏 써도 돼요.</li>
+        </ul>
+        <p class="note">모든 스테이지는 미리 만들어서, 갈 수 있는 모든 상태를 탐색해 깰 수 있는지와 최소 이동 수를 확인했어요. 다섯 번째 판은 쉬어가는 판이고, 열 번째 판이 챕터의 최고점이에요.</p>
+      </details>
+    </aside>
+  </section>
+
+  <section class="card map">
+    <div class="map-head">
+      <h2>스테이지</h2>
+      <label class="dev"><input type="checkbox" id="devAll"> 개발자 모드: 전체 열기</label>
+    </div>
+    <div id="chapters" class="map"></div>
+  </section>
+</div>
+
+<script src="levels.js"></script>
+<script>
+const $=q=>document.querySelector(q);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const LEVELS=window.SORT_LEVELS||[],STAGES=LEVELS.length;
+const CHAPTERS=[{name:'첫 정리',hint:'빈 튜브 2개로 천천히 익혀요'},{name:'일곱 빛깔',hint:'색이 6~7가지로 늘어나요'},{name:'빈 튜브 하나',hint:'빈 튜브가 하나뿐이에요'}];
+const COLORS={A:'#43f0ff',B:'#ff4fd2',C:'#ffc44d',D:'#5dffa0',E:'#b38bff',F:'#ff8a3d',G:'#e7eaf4'};
+const NAMES={A:'시안',B:'핑크',C:'노랑',D:'초록',E:'보라',F:'주황',G:'하양'};
+
+const Sfx=(()=>{
+  let ac=null,out=null,on=store.get('cs_sound',true);
+  function unlock(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}
+  function tone(f,d,{type='sine',vol=.18,slide=0,delay=0}={}){if(!on||!ac||ac.state!=='running')return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03)}
+  const st=n=>Math.pow(2,n/12);
+  return{unlock,get on(){return on},toggle(){on=!on;store.set('cs_sound',on);return on},
+    pick(){tone(520,.06,{type:'triangle',vol:.12})},
+    drop(k){tone(660*st(k*3),.09,{type:'triangle',vol:.14,slide:1.2})},
+    bad(){tone(150,.12,{type:'square',vol:.05})},
+    full(){[0,7,12].forEach((s,i)=>tone(784*st(s),.18,{vol:.12,delay:i*.06}))},
+    win(){[0,4,7,12,16,19].forEach((s,i)=>tone(523*st(s),.22,{type:'triangle',vol:.13,delay:i*.08}))}};
+})();
+const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
+
+// progress.best[s] = fewest moves used to clear stage s (1-based)
+let progress=store.get('cs_progress',{best:{},last:1});
+if(!progress.best)progress={best:{},last:1};
+let stage=1,tubes=[],hist=[],sel=-1,busy=false,devAll=false;
+const bench=$('#bench');
+const unlocked=s=>devAll||s===1||!!progress.best[s-1];
+const isFull=t=>t.length===CAP&&[...t].every(c=>c===t[0]);
+const msg=t=>{$('#msg').textContent=t};
+
+function load(s){
+  stage=s;tubes=LEVELS[s-1].tubes.slice();hist=[];sel=-1;busy=false;
+  progress.last=s;store.set('cs_progress',progress);
+  const ch=Math.floor((s-1)/10);
+  $('#chapLabel').innerHTML=`챕터 ${ch+1} · <b>${CHAPTERS[ch].name}</b> · ${CHAPTERS[ch].hint}`;
+  $('#win').hidden=true;msg(s===1&&!progress.best[1]?'튜브를 탭해서 고르고, 옮길 튜브를 다시 탭하세요.':'');
+  render();map();
+}
+function render(){
+  bench.textContent='';
+  tubes.forEach((t,i)=>{
+    const b=document.createElement('button');b.type='button';b.className='tube'+(i===sel?' sel':'')+(isFull(t)?' done':'');
+    if(isFull(t))b.style.setProperty('--c',COLORS[t[0]]);
+    b.setAttribute('aria-label',`${i+1}번 튜브: `+(t.length?[...t].map(c=>NAMES[c]).join(', '):'비어 있음'));
+    for(const c of t){const d=document.createElement('div');d.className='ball';d.style.setProperty('--c',COLORS[c]);b.appendChild(d)}
+    b.onclick=()=>tap(i);bench.appendChild(b);
+  });
+  $('#sStage').textContent=stage+'/'+STAGES;$('#sMoves').textContent=hist.length;$('#sMin').textContent=LEVELS[stage-1].min;
+  $('#sBest').textContent=progress.best[stage]||'-';
+  $('#bUndo').disabled=!hist.length;
+}
+const tubeEl=i=>bench.children[i];
+function shakeTube(i){const e=tubeEl(i);e.classList.add('bad');setTimeout(()=>e.classList.remove('bad'),300)}
+function clearHint(){bench.querySelectorAll('.hint').forEach(e=>e.classList.remove('hint','to'))}
+function tap(i){
+  Sfx.unlock();if(busy||!$('#win').hidden)return;clearHint();
+  if(sel<0){if(!tubes[i].length||isFull(tubes[i]))return;sel=i;Sfx.pick();render();return}
+  if(sel===i){sel=-1;render();return}
+  const top=tubes[sel].slice(-1),dst=tubes[i];
+  if(dst.length<CAP&&(!dst.length||dst.slice(-1)===top)){pour(sel,i);return}
+  Sfx.bad();shakeTube(i);
+  // a different tube that could be picked becomes the new selection
+  if(dst.length&&!isFull(dst)){sel=i;render()}
+}
+function pour(a,b){
+  busy=true;const from=tubes[a],c=from.slice(-1);let n=0;
+  while(n<from.length&&from[from.length-1-n]===c&&tubes[b].length+n<CAP)n++;
+  const fr=tubeEl(a).getBoundingClientRect(),tr=tubeEl(b).getBoundingClientRect();
+  const slot=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--slot'))||38;
+  const balls=[...tubeEl(a).querySelectorAll('.ball')].slice(-n).reverse();
+  const anims=balls.map((el,k)=>{
+    const r=el.getBoundingClientRect(),fly=el.cloneNode();fly.classList.add('fly');fly.style.left=r.left+'px';fly.style.top=r.top+'px';document.body.appendChild(fly);el.style.visibility='hidden';
+    const dx=tr.left+tr.width/2-(r.left+r.width/2),destTop=tr.bottom-8-(tubes[b].length+k+1)*slot+(slot-r.height)/2,dy=destTop-r.top;
+    const lift=Math.min(fr.top,tr.top)-r.top-40;
+    const an=fly.animate([{transform:'translate(0,0)'},{transform:`translate(0,${lift}px)`,offset:.3},{transform:`translate(${dx}px,${lift}px)`,offset:.6},{transform:`translate(${dx}px,${dy}px)`}],{duration:340,delay:k*70,easing:'ease-in-out',fill:'forwards'});
+    an.onfinish=()=>Sfx.drop(tubes[b].length+k);
+    return an.finished.then(()=>fly.remove());
+  });
+  Promise.all(anims).then(()=>{
+    hist.push(tubes.slice());
+    tubes=tubes.slice();tubes[a]=from.slice(0,from.length-n);tubes[b]=tubes[b]+c.repeat(n);
+    sel=-1;busy=false;
+    if(isFull(tubes[b])){Sfx.full();buzz(20)}else buzz(8);
+    render();check();
+  });
+}
+function check(){
+  if(isSolved(tubes)){
+    const m=hist.length,min=LEVELS[stage-1].min,prev=progress.best[stage],better=!prev||m<prev;
+    if(better){progress.best[stage]=m;store.set('cs_progress',progress)}
+    Sfx.win();buzz(60);msg('');
+    setTimeout(()=>{
+      const bd=$('#winBadge');bd.textContent=m<=min?'최소 이동 달성!':better&&prev?'새 기록!':'';bd.hidden=!bd.textContent;
+      $('#winText').textContent=`${m}번 만에 클리어 · 최소 ${min}번`+(prev&&!better?` · 내 기록 ${prev}번`:'');
+      $('#winNext').hidden=stage>=STAGES;$('#win').hidden=false;map();
+    },350);
+    return;
+  }
+  let any=false;
+  for(let i=0;i<tubes.length&&!any;i++)for(let j=0;j<tubes.length;j++)if(canMove(tubes,i,j)){any=true;break}
+  msg(any?'':'더 옮길 수 있는 곳이 없어요. 되돌리기나 다시를 눌러 보세요.');
+}
+function map(){
+  const box=$('#chapters');box.textContent='';
+  CHAPTERS.forEach((c,ci)=>{
+    const sec=document.createElement('div');sec.className='chapter';
+    sec.innerHTML=`<h3><b>챕터 ${ci+1} · ${c.name}</b>${c.hint}</h3>`;
+    const g=document.createElement('div');g.className='tiles';
+    for(let s=ci*10+1;s<=ci*10+10;s++){
+      const r=progress.best[s],min=LEVELS[s-1].min,perfect=r&&r<=min;
+      const b=document.createElement('button');b.type='button';b.className='tile'+(r?' clear':'')+(perfect?' perfect':'');b.disabled=!unlocked(s);
+      if(s===stage)b.setAttribute('aria-current','true');
+      b.innerHTML=`<span class="n">${s}</span><span class="s">${r?'✓':'·'}</span><span class="d">최소 ${min}번</span>`;
+      b.setAttribute('aria-label',`스테이지 ${s}, 최소 ${min}번`+(r?`, 내 기록 ${r}번`:''));
+      b.onclick=()=>{Sfx.unlock();load(s);if(matchMedia('(max-width:600px)').matches)scrollTo({top:0,behavior:'smooth'})};
+      g.appendChild(b);
+    }
+    sec.appendChild(g);box.appendChild(sec);
+  });
+}
+$('#bUndo').onclick=()=>{Sfx.unlock();if(busy||!hist.length||!$('#win').hidden)return;tubes=hist.pop();sel=-1;clearHint();msg('');render()};
+$('#bReset').onclick=()=>{Sfx.unlock();if(busy)return;load(stage)};
+$('#bHint').onclick=()=>{
+  Sfx.unlock();if(busy||isSolved(tubes))return;clearHint();
+  const sol=solve(tubes,400000);
+  if(!sol){msg(sol===null?'이 상태로는 깰 수 없어요. 되돌리기나 다시를 눌러 보세요.':'힌트를 찾지 못했어요. 다시를 눌러 보세요.');return}
+  sel=-1;render();const[a,b]=sol[0];tubeEl(a).classList.add('hint');tubeEl(b).classList.add('hint','to');
+  msg(`노랗게 반짝이는 튜브에서 하늘색 튜브로 옮겨 보세요. (남은 최소 ${sol.length}번)`);
+};
+$('#winRetry').onclick=()=>{Sfx.unlock();load(stage)};
+$('#winNext').onclick=()=>{Sfx.unlock();load(Math.min(STAGES,stage+1))};
+$('#devAll').onchange=e=>{devAll=e.target.checked;map()};
+function syncSound(){const b=$('#bSound');b.textContent=Sfx.on?'소리 켬':'소리 끔';b.classList.toggle('off',!Sfx.on);b.setAttribute('aria-pressed',String(Sfx.on))}
+$('#bSound').onclick=()=>{Sfx.unlock();Sfx.toggle();syncSound();Sfx.pick()};
+syncSound();
+
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+{let s=Math.min(STAGES,Math.max(1,progress.last|0||1));if(!unlocked(s))s=1;load(s)}
+</script>
+</html>

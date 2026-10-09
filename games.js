@@ -55,5 +55,16 @@ window.GAMES = [
     status: "play",
     meta: "무한 모드 · 퍼펙트",
     tags: ["아케이드", "타이밍"]
+  },
+  {
+    id: "color-sort",
+    title: "색 정렬 튜브",
+    desc: "튜브를 탭해서 색 구슬을 옮겨 한 가지 색씩 맞추는 퍼즐",
+    url: "color-sort/index.html",
+    thumb: "color-sort/thumb.svg",
+    color: "#43f0ff",
+    status: "play",
+    meta: "30스테이지 · 3챕터",
+    tags: ["퍼즐", "최소 수 검증"]
   }
 ];
