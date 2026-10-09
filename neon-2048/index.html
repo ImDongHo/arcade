@@ -95,7 +95,7 @@ details.card:not([open]){gap:0}
 .cells,.tiles{position:absolute;inset:var(--gap);display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:var(--gap)}
 .cells i{border-radius:10px;background:#0f1424;border:1px solid #182036}
 .tiles{display:block}
-.tile{position:absolute;width:calc((100% - 3*var(--gap))/4);height:calc((100% - 3*var(--gap))/4);border-radius:10px;display:grid;place-items:center;font:700 26px var(--f-mono);color:var(--c);background:color-mix(in srgb,var(--c) 14%,#0b0f19);border:2px solid var(--c);box-shadow:0 0 16px color-mix(in srgb,var(--c) 45%,transparent),inset 0 0 14px color-mix(in srgb,var(--c) 20%,transparent);text-shadow:0 0 10px color-mix(in srgb,var(--c) 70%,transparent);transition:transform .11s ease-out;box-sizing:border-box}
+.tile{position:absolute;width:calc((100% - 3*var(--gap))/4);height:calc((100% - 3*var(--gap))/4);border-radius:10px;display:grid;place-items:center;font:700 26px var(--f-mono);color:var(--c);background:color-mix(in srgb,var(--c) 14%,#0b0f19);border:2px solid var(--c);box-shadow:0 0 16px color-mix(in srgb,var(--c) 45%,transparent),inset 0 0 14px color-mix(in srgb,var(--c) 20%,transparent);text-shadow:0 0 10px color-mix(in srgb,var(--c) 70%,transparent);transition:left .11s ease-out,top .11s ease-out;box-sizing:border-box}
 .tile.n3{font-size:22px}.tile.n4{font-size:18px}.tile.n5{font-size:15px}
 .tile.star{--c:#ffffff;background:conic-gradient(from 0deg,#43f0ff33,#ff4fd233,#ffc44d33,#5dffa033,#43f0ff33);font-size:28px;animation:spin 6s linear infinite}
 .tile.new{animation:appear .16s ease-out}
@@ -311,17 +311,21 @@ function undo(){
 }
 
 /* drawing */
-function cellPos(r,c){return`translate(calc(${c} * (100% + var(--gap))), calc(${r} * (100% + var(--gap))))`}
+// tiles are placed with left/top (not transform) so the grow/pop effects scale around each tile's own center
+const cellOff=k=>`calc(${k} * ((100% - 3*var(--gap)) / 4 + var(--gap)))`;
 function render(extra=[]){
   const all=tiles.concat(extra),keep=new Set(all.map(t=>t.id));
   [...tilesEl.children].forEach(el=>{if(!keep.has(+el.dataset.id))el.remove()});
   for(const t of all){
     let el=tilesEl.querySelector(`[data-id="${t.id}"]`);
-    if(!el){el=document.createElement('div');el.dataset.id=t.id;tilesEl.appendChild(el)}
+    // a brand-new tile must start in its own cell: place it with transitions off, then turn them back on
+    let fresh=false;
+    if(!el){el=document.createElement('div');el.dataset.id=t.id;el.style.transition='none';fresh=true}
     const label=t.v===STAR?'★':String(t.v);
     el.className='tile'+(t.v===STAR?' star':'')+(label.length>=3?' n'+label.length:'')+(t.isNew?' new':'')+(t.pop?' pop':'');
     if(t.v!==STAR)el.style.setProperty('--c',colorOf(t.v));
-    el.textContent=label;el.style.transform=cellPos(t.r,t.c);
+    el.textContent=label;el.style.left=cellOff(t.c);el.style.top=cellOff(t.r);
+    if(fresh){tilesEl.appendChild(el);el.getBoundingClientRect();el.style.transition=''}
     el.setAttribute('aria-label',t.v===STAR?'별 타일':String(t.v));
     t.isNew=false;t.pop=false;
   }
