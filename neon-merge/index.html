@@ -64,6 +64,7 @@ details.card:not([open]){gap:0}
 .banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
 .banner .rec{font:700 15px var(--f-mono);color:var(--pink);text-shadow:0 0 14px rgba(255,79,210,.6)}
 .banner p{margin:0;font-family:var(--f-mono)}
+.banner .time{display:block;margin-top:4px;font:500 13px var(--f-body);color:var(--muted)}
 .busy{position:absolute;inset:12px;display:grid;place-content:center;color:var(--muted);font-family:var(--f-mono);text-align:center;padding:16px}
 .hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -195,7 +196,7 @@ const COMBO_MS=900;
 const ok=!!window.Matter;
 if(!ok)$('#fail').hidden=false;
 const M=ok?Matter:{};
-let engine,score=0,best=store.get('mg_best',0),cur=0,nxt=0,dropX=W/2,cool=0,over=false,queue=[],danger=0,acc=0,topT=0,
+let engine,playMs=0,score=0,best=store.get('mg_best',0),cur=0,nxt=0,dropX=W/2,cool=0,over=false,queue=[],danger=0,acc=0,topT=0,
     combo=0,maxCombo=0,lastMerge=-1e9,nextBeep=0,shake=0,flash=0,parts=[],floats=[],rings=[];
 const R=mulberry(Date.now()%1e9);
 const rnd=()=>{let r=R(),i=0;while(r>W8[i]){r-=W8[i];i++}return i};
@@ -213,14 +214,14 @@ function newEngine(){
 function reset(){
   if(!ok)return;
   newEngine();
-  score=0;cur=rnd();nxt=rnd();over=false;queue=[];danger=0;topT=0;combo=0;maxCombo=0;parts=[];floats=[];rings=[];shake=0;flash=0;
+  score=0;playMs=0;cur=rnd();nxt=rnd();over=false;queue=[];danger=0;topT=0;combo=0;maxCombo=0;parts=[];floats=[];rings=[];shake=0;flash=0;
   $('#over').hidden=true;store.set('mg_save',null);disarm();hud();
 }
 function restore(sv){
   newEngine();
   const old=performance.now()-5000;
   for(const[t,x,y]of sv.bs){const b=make(t,x,y,false);b.born=old}
-  score=sv.score||0;cur=sv.cur||0;nxt=sv.nxt||0;topT=sv.topT||0;maxCombo=sv.maxCombo||0;over=false;
+  score=sv.score||0;playMs=sv.playMs||0;cur=sv.cur||0;nxt=sv.nxt||0;topT=sv.topT||0;maxCombo=sv.maxCombo||0;over=false;
   floats.push({x:W/2,y:H/2,text:'이어서 하기',c:'#e7eaf4',t0:performance.now(),size:20,life:1400});
   hud();
 }
@@ -228,12 +229,13 @@ function save(){
   if(!ok||!engine)return;
   if(over){store.set('mg_save',null);return}
   const bs=balls().map(b=>[b.tier,Math.round(b.position.x*10)/10,Math.round(b.position.y*10)/10]);
-  store.set('mg_save',bs.length?{bs,score,cur,nxt,topT,maxCombo}:null);
+  store.set('mg_save',bs.length?{bs,score,cur,nxt,topT,maxCombo,playMs}:null);
 }
 function hud(){
   $('#sScore').textContent=score.toLocaleString();$('#sBest').textContent=best.toLocaleString();
   $('#sTop').textContent=2**(topT+1);$('#sCombo').textContent=maxCombo>1?'x'+maxCombo:'-';
 }
+const fmtPlay=ms=>{const s=Math.max(1,Math.round(ms/1000)),m=Math.floor(s/60);return((m?m+'분 ':'')+(s%60||!m?s%60+'초':'')).trim()};
 function drop(){
   if(!ok||over||cool>0)return;
   const r=RAD[cur];make(cur,Math.max(r+2,Math.min(W-r-2,dropX)),TOP);
@@ -255,7 +257,7 @@ function gameOver(){
   if(rec){best=score;store.set('mg_best',best);Sfx.best()}else Sfx.over();
   Haptic.bump(120);
   $('#overRec').hidden=!rec;
-  $('#overText').textContent=`점수 ${score.toLocaleString()} · 최고 단계 ${2**(topT+1)}`+(maxCombo>1?` · 최대 콤보 x${maxCombo}`:'');
+  $('#overText').innerHTML=`점수 ${score.toLocaleString()} · 최고 단계 ${2**(topT+1)}`+(maxCombo>1?` · 최대 콤보 x${maxCombo}`:'')+`<span class="time">${fmtPlay(playMs)} 동안 플레이</span>`;
   $('#over').hidden=false;store.set('mg_save',null);hud();
 }
 
@@ -306,6 +308,7 @@ function circle(t,x,y,a=1,s=1){
 let last=performance.now();
 function frame(now){
   const dt=Math.min(50,now-last);last=now;
+  if(ok&&!over&&balls().length)playMs+=dt;   // counted only while a run is going; shown on the result screen only
   if(ok&&!over){
     acc+=dt;let n=0;
     while(acc>=1000/60&&n<3){

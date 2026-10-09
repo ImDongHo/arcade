@@ -64,6 +64,7 @@ details.card:not([open]){gap:0}
 .banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
 .banner .rec{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 14px rgba(67,240,255,.6)}
 .banner p{margin:0;font-family:var(--f-mono)}
+.banner .time{display:block;margin-top:4px;font:500 13px var(--f-body);color:var(--muted)}
 .hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
@@ -187,7 +188,7 @@ cv.style.maxWidth=W+'px';
 
 // special blocks: gold = perfect gives +5, wide = next block grows, slow = next 3 blocks move slowly
 const SPECIAL={gold:{c:'#ffc44d',label:'+5'},wide:{c:'#43f0ff',label:'넓게'},slow:{c:'#b38bff',label:'느리게'}};
-let stack,mover,faller,chips,parts,floats,score,floors,combo,maxCombo,perfects,state='ready',cam,camTo,flash,shake,dir,
+let playMs=0,stack,mover,faller,chips,parts,floats,score,floors,combo,maxCombo,perfects,state='ready',cam,camTo,flash,shake,dir,
     slowLeft,growNext,lastSpecial,wave,zone,zoneFrom,zoneT0,recordShown,
     best=store.get('ns_best2',0),bestF=store.get('ns_bestF',0);
 const hue=i=>(190+i*9)%360;
@@ -195,7 +196,7 @@ const col=(i,l=60)=>`hsl(${hue(i)} 100% ${l}%)`;
 const baseSpeed=()=>Math.min(.42,.15+floors*.006);   // px per ms
 
 function reset(){
-  stack=[{x:(W-BASEW)/2,w:BASEW,i:0}];faller=null;chips=[];parts=[];floats=[];score=0;floors=0;combo=0;maxCombo=0;perfects=0;
+  stack=[{x:(W-BASEW)/2,w:BASEW,i:0}];faller=null;chips=[];parts=[];floats=[];score=0;floors=0;playMs=0;combo=0;maxCombo=0;perfects=0;
   cam=0;camTo=0;flash=0;shake=0;dir=1;slowLeft=0;growNext=0;lastSpecial=0;wave=null;zone=0;zoneFrom=0;zoneT0=-1e9;recordShown=bestF===0;
   spawn();$('#over').hidden=true;disarm();hud();
 }
@@ -256,12 +257,13 @@ function sparks(x,y,w,now){
   for(let k=0;k<18;k++){const side=k%2,px=side?x+w:x;parts.push({x:px+(side?-1:1)*Math.random()*w*.15,y:y+Math.random()*BH,vx:(side?1:-1)*(.05+Math.random()*.12),vy:-.05-Math.random()*.1,c:col(stack.length,70),t0:now,life:500})}
   flash=Math.max(flash,.1);
 }
+const fmtPlay=ms=>{const s=Math.max(1,Math.round(ms/1000)),m=Math.floor(s/60);return((m?m+'분 ':'')+(s%60||!m?s%60+'초':'')).trim()};
 function gameOver(){
   state='over';shake=8;const rec=score>best;
   if(rec){best=score;store.set('ns_best2',best);Sfx.best()}else Sfx.over();
   if(floors>bestF){bestF=floors;store.set('ns_bestF',bestF)}
   buzz(120);
-  $('#rec').hidden=!rec;$('#overText').textContent=`점수 ${score} · ${floors}층`+(maxCombo>1?` · 최대 퍼펙트 x${maxCombo}`:'');
+  $('#rec').hidden=!rec;$('#overText').innerHTML=`점수 ${score} · ${floors}층`+(maxCombo>1?` · 최대 퍼펙트 x${maxCombo}`:'')+`<span class="time">${fmtPlay(playMs)} 동안 플레이</span>`;
   hud();setTimeout(()=>{if(state==='over')$('#over').hidden=false},500);
 }
 function hud(){$('#sScore').textContent=score;$('#sBest').textContent=best;$('#sFloor').textContent=floors;$('#sBestF').textContent=bestF}
@@ -344,6 +346,7 @@ function block(x,y,w,i,a=1,sp=null,glow=0){
 let lastT=performance.now();
 function frame(now){
   const dt=Math.min(40,now-lastT);lastT=now;
+  if(state==='play')playMs+=dt;   // counted only while a run is going; shown on the result screen only
   if(state==='play'&&mover){
     if(mover.flipAt&&now>=mover.flipAt&&mover.x>0&&mover.x+mover.w<W){mover.v=-mover.v;mover.flipAt=0}
     mover.x+=mover.v*curSpeed(now)*dt;

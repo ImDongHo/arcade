@@ -64,6 +64,7 @@ details.card:not([open]){gap:0}
 .banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
 .banner .rec{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 14px rgba(67,240,255,.6)}
 .banner p{margin:0;font-family:var(--f-mono)}
+.banner .time{display:block;margin-top:4px;font:500 13px var(--f-body);color:var(--muted)}
 .hscore{display:none}
 .hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -227,7 +228,7 @@ function bubble(ci,x,y,scale=1,a=1){
 }
 
 /* ---------- state ---------- */
-let grid=[],parity=0,cur=0,nxt=1,score=0,best=store.get('bb_best',0),combo=0,maxCombo=0,misses=0,shots=0,over=false,guideLv=0,
+let grid=[],parity=0,cur=0,nxt=1,score=0,best=store.get('bb_best',0),combo=0,maxCombo=0,misses=0,shots=0,over=false,guideLv=0,playMs=0,
     shot=null,aimA=-Math.PI/2,aiming=false,swapDown=false,descend=0,shake=0,flash=0,
     pops=[],falls=[],parts=[],floats=[],rings=[],nextBeep=0;
 const R=mulberry(Date.now()%1e9);
@@ -264,7 +265,7 @@ function makeRow(len,n){
 }
 
 function reset(){
-  parity=0;grid=[];score=0;combo=0;maxCombo=0;misses=0;shots=0;over=false;shot=null;guideLv=0;
+  parity=0;grid=[];score=0;combo=0;maxCombo=0;misses=0;shots=0;over=false;shot=null;guideLv=0;playMs=0;
   pops=[];falls=[];parts=[];floats=[];rings=[];descend=0;shake=0;flash=0;
   const n=level().colors;
   for(let r=0;r<5;r++)grid.push(makeRow(rowLen(r),n));
@@ -273,10 +274,10 @@ function reset(){
 }
 function save(){
   if(over||!grid.length){store.set('bb_save',null);return}
-  store.set('bb_save',{grid,parity,cur,nxt,score,maxCombo,misses,shots});
+  store.set('bb_save',{grid,parity,cur,nxt,score,maxCombo,misses,shots,playMs});
 }
 function restore(sv){
-  grid=sv.grid;parity=sv.parity|0;cur=sv.cur|0;nxt=sv.nxt|0;score=sv.score||0;maxCombo=sv.maxCombo||0;misses=sv.misses||0;shots=sv.shots||0;guideLv=level().guide;
+  grid=sv.grid;parity=sv.parity|0;cur=sv.cur|0;nxt=sv.nxt|0;score=sv.score||0;maxCombo=sv.maxCombo||0;misses=sv.misses||0;shots=sv.shots||0;playMs=sv.playMs||0;guideLv=level().guide;
   ensureRows();
   floats.push({x:W/2,y:H/2,text:'이어서 하기',c:'#e7eaf4',t0:performance.now(),size:20,life:1400});
   hud();
@@ -387,12 +388,13 @@ function checkOver(){
   for(let r=MAXR;r<grid.length;r++)if(grid[r].some(v=>v>=0)){gameOver();return}
 }
 function lowest(){for(let r=grid.length-1;r>=0;r--)if(grid[r].some(v=>v>=0))return r;return-1}
+const fmtPlay=ms=>{const s=Math.max(1,Math.round(ms/1000)),m=Math.floor(s/60);return((m?m+'분 ':'')+(s%60||!m?s%60+'초':'')).trim()};
 function gameOver(){
   over=true;const rec=score>best;
   if(rec){best=score;store.set('bb_best',best);Sfx.best()}else Sfx.over();
   Haptic.bump(120);
   $('#overRec').hidden=!rec;
-  $('#overText').textContent=`점수 ${score.toLocaleString()} · ${shots}발`+(maxCombo>1?` · 최대 콤보 x${maxCombo}`:'');
+  $('#overText').innerHTML=`점수 ${score.toLocaleString()} · ${shots}발`+(maxCombo>1?` · 최대 콤보 x${maxCombo}`:'')+`<span class="time">${fmtPlay(playMs)} 동안 플레이</span>`;
   $('#over').hidden=false;store.set('bb_save',null);hud();
 }
 
@@ -447,6 +449,7 @@ addEventListener('pagehide',save);
 let last=performance.now();
 function frame(now){
   const dt=Math.min(50,now-last);last=now;
+  if(!over&&shots>0)playMs+=dt;   // counted only while a run is going; shown on the result screen only
   if(shot)stepShot(dt);
   if(descend)descend=Math.max(0,descend-dt/260);
   const lr=lowest(),dangerous=!over&&lr>=MAXR-2;
