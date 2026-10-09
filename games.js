@@ -33,5 +33,16 @@ window.GAMES = [
     status: "play",
     meta: "점수 경쟁 · 콤보",
     tags: ["아케이드", "물리", "효과음"]
+  },
+  {
+    id: "neon-bubble",
+    title: "네온 버블",
+    desc: "조준해서 쏘고 같은 색 3개를 붙여 터뜨리는 버블 슈터",
+    url: "neon-bubble/index.html",
+    thumb: "neon-bubble/thumb.svg",
+    color: "#43f0ff",
+    status: "play",
+    meta: "무한 모드 · 콤보",
+    tags: ["아케이드", "버블 슈터"]
   }
 ];
