@@ -133,7 +133,7 @@ details.card:not([open]){gap:0}
           <li>오른쪽 아래 "다음" 구슬을 탭하면 지금 구슬과 바꿀 수 있어요.</li>
           <li>앱을 닫아도 하던 판이 저장돼서 다음에 이어서 할 수 있어요.</li>
         </ul>
-        <p class="note">아이폰은 무음 모드에서는 소리가 나지 않아요. 점수가 오를수록 색이 늘어나고 줄이 더 빨리 내려와요.</p>
+        <p class="note">아이폰은 무음 모드에서는 소리가 나지 않아요. 점수가 오를수록 색이 늘어나고 줄이 더 빨리 내려와요. 5,000점부터는 조준선이 짧아지고, 10,000점부터는 첫 번째 벽까지만 보여요.</p>
       </details>
     </aside>
   </section>
@@ -217,7 +217,7 @@ function bubble(ci,x,y,scale=1,a=1){
 }
 
 /* ---------- state ---------- */
-let grid=[],parity=0,cur=0,nxt=1,score=0,best=store.get('bb_best',0),combo=0,maxCombo=0,misses=0,shots=0,over=false,
+let grid=[],parity=0,cur=0,nxt=1,score=0,best=store.get('bb_best',0),combo=0,maxCombo=0,misses=0,shots=0,over=false,guideLv=0,
     shot=null,aimA=-Math.PI/2,aiming=false,swapDown=false,descend=0,shake=0,flash=0,
     pops=[],falls=[],parts=[],floats=[],rings=[],nextBeep=0;
 const R=mulberry(Date.now()%1e9);
@@ -233,7 +233,20 @@ function nbrs(r,c){
   for(const rr of[r-1,r+1]){if(o)L.push([rr,c],[rr,c+1]);else L.push([rr,c-1],[rr,c])}
   return L.filter(([a,b])=>a>=0&&a<grid.length&&b>=0&&b<rowLen(a));
 }
-function level(){return{colors:score<3000?4:score<10000?5:6,limit:score<4000?5:score<12000?4:3}}
+// guide: 0 = full path + landing spot, 1 = shorter line + spot only when in reach, 2 = up to the first wall, no spot
+function level(){return{colors:score<3000?4:score<10000?5:6,limit:score<4000?5:score<12000?4:3,guide:score<5000?0:score<10000?1:2}}
+// cut the aim polyline to the length this level allows; reports whether the landing point is inside it
+function guidePath(pts,g){
+  if(g===0)return{pts,full:true};
+  const max=g===1?330:220,out=[pts[0]];let left=max;
+  for(let i=1;i<pts.length;i++){
+    const[a,b]=[pts[i-1],pts[i]],d=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    if(d>=left){const t=left/d;out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);return{pts:out,full:false}}
+    out.push(b);left-=d;
+    if(g===2&&i===1&&pts.length>2)return{pts:out,full:false};
+  }
+  return{pts:out,full:g===1};
+}
 function present(){const s=new Set();for(const row of grid)for(const v of row)if(v>=0)s.add(v);return[...s]}
 function pickColor(){const p=present(),n=level().colors;const pool=p.length?p:[...Array(n).keys()];return pool[Math.floor(R()*pool.length)]}
 function makeRow(len,n){
@@ -241,7 +254,7 @@ function makeRow(len,n){
 }
 
 function reset(){
-  parity=0;grid=[];score=0;combo=0;maxCombo=0;misses=0;shots=0;over=false;shot=null;
+  parity=0;grid=[];score=0;combo=0;maxCombo=0;misses=0;shots=0;over=false;shot=null;guideLv=0;
   pops=[];falls=[];parts=[];floats=[];rings=[];descend=0;shake=0;flash=0;
   const n=level().colors;
   for(let r=0;r<5;r++)grid.push(makeRow(rowLen(r),n));
@@ -253,7 +266,7 @@ function save(){
   store.set('bb_save',{grid,parity,cur,nxt,score,maxCombo,misses,shots});
 }
 function restore(sv){
-  grid=sv.grid;parity=sv.parity|0;cur=sv.cur|0;nxt=sv.nxt|0;score=sv.score||0;maxCombo=sv.maxCombo||0;misses=sv.misses||0;shots=sv.shots||0;
+  grid=sv.grid;parity=sv.parity|0;cur=sv.cur|0;nxt=sv.nxt|0;score=sv.score||0;maxCombo=sv.maxCombo||0;misses=sv.misses||0;shots=sv.shots||0;guideLv=level().guide;
   ensureRows();
   floats.push({x:W/2,y:H/2,text:'이어서 하기',c:'#e7eaf4',t0:performance.now(),size:20,life:1400});
   hud();
@@ -349,6 +362,8 @@ function land(){
   // the bubble in hand might be a color that no longer exists on the board
   const p=present();
   if(p.length){if(!p.includes(cur))cur=pickColor();if(!p.includes(nxt))nxt=pickColor()}
+  const g=level().guide;
+  if(g>guideLv){guideLv=g;floats.push({x:W/2,y:H/2,text:g===1?'조준선이 짧아져요!':'조준선이 더 짧아져요!',c:'#ff4fd2',t0:now+400,size:20,life:1600})}
   checkOver();hud();
 }
 function addRow(anim){
@@ -444,9 +459,9 @@ function frame(now){
 
   // aim guide + landing ghost
   if(!over&&!shot&&!descend){
-    const tr=trace(aimA),cell=snapCell(tr.x,tr.y);
+    const tr=trace(aimA),gp=guidePath(tr.pts,level().guide),cell=gp.full?snapCell(tr.x,tr.y):null;
     ctx.save();ctx.setLineDash([2,8]);ctx.lineDashOffset=-now*.04;ctx.lineCap='round';ctx.lineWidth=2.4;ctx.strokeStyle=COL[cur];ctx.globalAlpha=aiming?.9:.45;
-    ctx.beginPath();ctx.moveTo(tr.pts[0][0],tr.pts[0][1]);for(const p of tr.pts.slice(1))ctx.lineTo(p[0],p[1]);ctx.stroke();ctx.restore();
+    ctx.beginPath();ctx.moveTo(gp.pts[0][0],gp.pts[0][1]);for(const p of gp.pts.slice(1))ctx.lineTo(p[0],p[1]);ctx.stroke();ctx.restore();
     if(cell){ctx.save();ctx.setLineDash([4,4]);ctx.strokeStyle=COL[cur];ctx.globalAlpha=aiming?.8:.35;ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx(...cell),cy(cell[0]),BR-3,0,7);ctx.stroke();ctx.restore()}
   }
 
