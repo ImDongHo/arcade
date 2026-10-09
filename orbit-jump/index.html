@@ -235,10 +235,13 @@ function capture(j){
   rings.push({x:p.x,y:p.y,r:p.R,c:p.c,t0:now});
   for(let k=0;k<14;k++){const a=Math.PI*2*k/14;parts.push({x:ball.x,y:ball.y,vx:Math.cos(a)*.12,vy:Math.sin(a)*.12,c:p.c,t0:now,life:420})}
   buzz(perfect?25:12);shake=perfect?4:2;
-  camTo=p.y-H*.68;ensure();hud();
+  camTo=p.y-H*.68;ensure();
+  // forget stars that were eaten or left far below
+  stars=stars.filter(s=>!s.got&&s.y-camTo<H*2);hud();
 }
+let overAt=0;
 function gameOver(){
-  state='over';const rec=score>best;
+  state='over';overAt=performance.now();const rec=score>best;
   if(rec){best=score;store.set('oj_best',best);Sfx.best()}
   Sfx.over();buzz(120);
   $('#rec').hidden=!rec;const sec=Math.round(playMs/1000),m=Math.floor(sec/60),ss=sec%60;
@@ -275,7 +278,8 @@ syncToggles();
 let lastT=performance.now();
 function step(dt){
   tNow+=dt;if(state==='play')playMs+=dt;
-  for(const p of planets)planetPos(p);
+  // planets already passed are left alone; only the current one and those ahead move and get drawn
+  for(let k=Math.max(0,cur-1);k<planets.length;k++)planetPos(planets[k]);
   if(ball.mode==='orbit'){
     const p=planets[cur];if(state!=='over')ball.a+=p.w*dt/1000;
     ball.x=p.x+Math.cos(ball.a)*p.R;ball.y=p.y+Math.sin(ball.a)*p.R;
@@ -293,6 +297,8 @@ function step(dt){
   }else if(ball.mode==='lost'){ball.x+=ball.vx*dt;ball.y+=ball.vy*dt}
 }
 function frame(now){
+  // after a run ends and its effects settle, stop redrawing the frozen screen to save battery
+  if(state==='over'&&now-overAt>2500){lastT=now;requestAnimationFrame(frame);return}
   const dt=Math.min(40,now-lastT);lastT=now;
   if(state!=='ready')step(dt);else{for(const p of planets)planetPos(p);const p=planets[cur];ball.a+=p.w*dt/1000;ball.x=p.x+Math.cos(ball.a)*p.R;ball.y=p.y+Math.sin(ball.a)*p.R}
   cam+=(camTo-cam)*Math.min(1,dt*.006);
@@ -305,7 +311,7 @@ function frame(now){
   ctx.globalAlpha=1;
   ctx.translate(sx,-cam);
   // planets
-  for(const p of planets){
+  for(let k=Math.max(0,cur-3);k<planets.length;k++){const p=planets[k];
     if(p.y-cam<-p.R-40||p.y-cam>H+p.R+40)continue;
     const active=p.i===cur,next=p.i===cur+1;
     ctx.save();ctx.strokeStyle=p.c;ctx.globalAlpha=active?.9:next?.75:.3;ctx.lineWidth=active?2.2:1.6;

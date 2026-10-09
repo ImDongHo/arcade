@@ -389,8 +389,9 @@ function checkOver(){
 }
 function lowest(){for(let r=grid.length-1;r>=0;r--)if(grid[r].some(v=>v>=0))return r;return-1}
 const fmtPlay=ms=>{const s=Math.max(1,Math.round(ms/1000)),m=Math.floor(s/60);return((m?m+'분 ':'')+(s%60||!m?s%60+'초':'')).trim()};
+let overAt=0;
 function gameOver(){
-  over=true;const rec=score>best;
+  over=true;overAt=performance.now();const rec=score>best;
   if(rec){best=score;store.set('bb_best',best);Sfx.best()}else Sfx.over();
   Haptic.bump(120);
   $('#overRec').hidden=!rec;
@@ -448,6 +449,8 @@ addEventListener('pagehide',save);
 /* ---------- drawing ---------- */
 let last=performance.now();
 function frame(now){
+  // after a run ends and its effects settle, stop redrawing the frozen screen to save battery
+  if(over&&now-overAt>1500){last=now;requestAnimationFrame(frame);return}
   const dt=Math.min(50,now-last);last=now;
   if(!over&&shots>0)playMs+=dt;   // counted only while a run is going; shown on the result screen only
   if(shot)stepShot(dt);

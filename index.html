@@ -63,7 +63,12 @@ header{display:grid;gap:6px}
 .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 8px}
 .next{display:grid;place-content:center;gap:6px;text-align:center;min-height:260px;border:1.5px dashed var(--line);border-radius:16px;color:var(--muted);padding:24px}
 .next b{font:700 32px var(--f-mono);color:var(--line)}
-footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px;display:grid;gap:12px}
+.reset{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.reset button{font:600 13px var(--f-body);color:var(--muted);background:#121726;border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;touch-action:manipulation}
+.reset button.armed{color:#ffd0d6;background:#3a0f16;border-color:#ff4b5e}
+.reset button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.reset span{font-size:12px}
 footer code{font-family:var(--f-mono);color:var(--fg);background:#151a27;padding:1px 6px;border-radius:5px}
 @media (prefers-reduced-motion:reduce){.card,.thumb img,.play{transition:none}.card:hover{transform:none}}
 </style>
@@ -79,7 +84,13 @@ footer code{font-family:var(--f-mono);color:var(--fg);background:#151a27;padding
 
   <main class="grid" id="grid"></main>
 
-  <footer>새 게임은 <code>games.js</code>에 한 줄 추가하면 여기에 카드로 나타나요.</footer>
+  <footer>
+    <div class="reset">
+      <button type="button" id="bReset">게임 기록 전체 초기화</button>
+      <span id="resetMsg">최고 점수, 스테이지 진행, 이어하기를 모두 지워요. 소리·진동 설정은 그대로예요.</span>
+    </div>
+    <div>새 게임은 <code>games.js</code>에 한 줄 추가하면 여기에 카드로 나타나요.</div>
+  </footer>
 </div>
 
 <script src="games.js"></script>
@@ -118,5 +129,26 @@ document.getElementById('cats').addEventListener('click',e=>{const b=e.target.cl
 draw();
 const n=s=>games.filter(g=>g.status===s).length;
 document.getElementById('bar').innerHTML=`<span>게임 <b>${games.length}</b>개</span><span>플레이 가능 <b>${n('play')}</b></span><span>프로토타입 <b>${n('proto')}</b></span>`;
+
+/* reset all game records — only the exact keys our games use, so nothing else stored on this browser is touched.
+   (When a new game saves something, add its key here.) */
+const RECORD_KEYS=[
+  'lm_progress','lm_stage',                  // 레이저 거울 반사
+  'pk_progress','pk_stage2',                 // 주차장 탈출
+  'mg_best','mg_save',                       // 네온 머지
+  'bb_best','bb_save',                       // 네온 버블
+  'ns_best2','ns_bestF',                     // 네온 스택
+  'cs_progress',                             // 색 정렬 튜브
+  'oj_best',                                 // 궤도 점프
+  'os_done','os_last',                       // 한붓그리기
+  't48_best','t48_save',                     // 네온 2048
+];
+{const b=document.getElementById('bReset'),m=document.getElementById('resetMsg'),base=m.textContent;let armed=0,timer=0;
+ const disarm=()=>{armed=0;clearTimeout(timer);b.textContent='게임 기록 전체 초기화';b.classList.remove('armed')};
+ b.addEventListener('click',()=>{
+   if(!armed){armed=1;b.textContent='한 번 더 누르면 지워져요';b.classList.add('armed');m.textContent='정말 모든 게임 기록을 지울까요? 되돌릴 수 없어요.';timer=setTimeout(()=>{disarm();m.textContent=base},3000);return}
+   let n=0;for(const k of RECORD_KEYS){try{if(localStorage.getItem(k)!=null){localStorage.removeItem(k);n++}}catch(e){}}
+   disarm();m.textContent=n?`기록 ${n}개를 지웠어요. 모든 게임이 처음 상태로 돌아갔어요.`:'지울 기록이 없어요.';
+ });}
 </script>
 </html>

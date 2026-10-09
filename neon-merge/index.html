@@ -112,7 +112,7 @@ details.card:not([open]){gap:0}
         <p id="overText"></p>
         <div><button class="btn primary" id="bRestart2">다시 시작</button></div>
       </div>
-      <div class="busy" id="fail" hidden>물리 엔진을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.</div>
+      <div class="busy" id="fail" hidden>물리 엔진을 불러오지 못했어요. 새로고침해 주세요.</div>
     </div>
     <aside class="side">
       <div class="card">
@@ -140,7 +140,7 @@ details.card:not([open]){gap:0}
 </div>
 <input type="checkbox" switch id="hapticSw" class="hapsw" tabindex="-1" aria-hidden="true"><label for="hapticSw" id="hapticLab" class="hapsw" aria-hidden="true"></label>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script src="../shared/matter-0.19.0.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
@@ -252,8 +252,9 @@ function mergeFx(t,x,y,now){
   if(combo>1)floats.push({x:W/2,y:LINE+46,text:'콤보 x'+combo,c:'#ffc44d',t0:now,size:22+Math.min(combo,6)*2,life:900});
   if(t>=5){shake=Math.min(10,3+t);flash=Math.min(.35,.08+t*.03);Sfx.big(t);Haptic.bump(40)}else{Sfx.merge(t,combo);Haptic.bump(15)}
 }
+let overAt=0;
 function gameOver(){
-  over=true;const rec=score>best;
+  over=true;overAt=performance.now();const rec=score>best;
   if(rec){best=score;store.set('mg_best',best);Sfx.best()}else Sfx.over();
   Haptic.bump(120);
   $('#overRec').hidden=!rec;
@@ -307,6 +308,8 @@ function circle(t,x,y,a=1,s=1){
 }
 let last=performance.now();
 function frame(now){
+  // after a run ends and its effects settle, stop redrawing the frozen screen to save battery
+  if(over&&now-overAt>1500){last=now;requestAnimationFrame(frame);return}
   const dt=Math.min(50,now-last);last=now;
   if(ok&&!over&&balls().length)playMs+=dt;   // counted only while a run is going; shown on the result screen only
   if(ok&&!over){

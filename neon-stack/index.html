@@ -258,8 +258,9 @@ function sparks(x,y,w,now){
   flash=Math.max(flash,.1);
 }
 const fmtPlay=ms=>{const s=Math.max(1,Math.round(ms/1000)),m=Math.floor(s/60);return((m?m+'분 ':'')+(s%60||!m?s%60+'초':'')).trim()};
+let overAt=0;
 function gameOver(){
-  state='over';shake=8;const rec=score>best;
+  state='over';overAt=performance.now();shake=8;const rec=score>best;
   if(rec){best=score;store.set('ns_best2',best);Sfx.best()}else Sfx.over();
   if(floors>bestF){bestF=floors;store.set('ns_bestF',bestF)}
   buzz(120);
@@ -345,6 +346,8 @@ function block(x,y,w,i,a=1,sp=null,glow=0){
 }
 let lastT=performance.now();
 function frame(now){
+  // after a run ends and its effects settle, stop redrawing the frozen screen to save battery
+  if(state==='over'&&now-overAt>2500){lastT=now;requestAnimationFrame(frame);return}
   const dt=Math.min(40,now-lastT);lastT=now;
   if(state==='play')playMs+=dt;   // counted only while a run is going; shown on the result screen only
   if(state==='play'&&mover){
@@ -367,7 +370,8 @@ function frame(now){
   if(bestF>0){const y=topY(bestF);ctx.save();ctx.setLineDash([6,6]);ctx.lineDashOffset=-now*.02;ctx.strokeStyle=floors>=bestF?'rgba(67,240,255,.25)':'rgba(67,240,255,.7)';ctx.lineWidth=1.5;
     ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#43f0ff';ctx.font='600 11px "IBM Plex Sans KR",sans-serif';ctx.textAlign='right';ctx.fillText(`최고 ${bestF}층`,W-8,y-5);ctx.restore()}
   ctx.fillStyle='#20283a';ctx.fillRect(0,GROUND,W,2);
-  for(let k=0;k<stack.length;k++){const b=stack[k];if(topY(k)+cam< -BH||topY(k)+cam>H+BH)continue;
+  // only the blocks that can be on screen are visited, so a very tall tower costs the same as a short one
+  for(let k=Math.max(0,Math.floor((GROUND+cam-H-BH)/BH));k<stack.length;k++){const b=stack[k];if(topY(k)+cam< -BH)break;if(topY(k)+cam>H+BH)continue;
     let glow=0;if(wave){const tw=(now-wave.t0)/28-(wave.k-k);if(tw>0&&tw<5)glow=1-tw/5}
     const t=b.t0?(now-b.t0)/160:1;
     if(t<1){const q=Math.sin(t*Math.PI)*.18;ctx.save();ctx.translate(b.x+b.w/2,topY(k)+BH);ctx.scale(1+q*.5,1-q);block(-b.w/2,-BH,b.w,b.i,1,b.sp,glow);ctx.restore()}
