@@ -44,5 +44,16 @@ window.GAMES = [
     status: "play",
     meta: "무한 모드 · 콤보",
     tags: ["아케이드", "버블 슈터"]
+  },
+  {
+    id: "neon-stack",
+    title: "네온 스택",
+    desc: "위에서 떨어지는 블록을 타이밍 맞춰 높이 쌓는 게임",
+    url: "neon-stack/index.html",
+    thumb: "neon-stack/thumb.svg",
+    color: "#ff4fd2",
+    status: "play",
+    meta: "무한 모드 · 퍼펙트",
+    tags: ["아케이드", "타이밍"]
   }
 ];

@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>네온 스택</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: one tall neon tower canvas + score panel. Phone: board first, 4-up score row, buttons in a bottom bar. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --pink:#ff4fd2; --cyan:#43f0ff; --amber:#ffc44d; --red:#ff4b5e;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px}
+.title{display:grid;gap:2px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content}
+.back:hover{color:var(--fg)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:var(--pink);text-shadow:0 0 18px rgba(255,79,210,.45)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;background:#05070c;border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;justify-content:center;min-width:0}
+canvas{display:block;width:100%;height:auto;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn.primary{background:var(--pink);color:#1a0316;border-color:var(--pink)}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.btn.armed{background:#3a1030;border-color:var(--pink);color:#ffd0f4}
+.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.banner{position:absolute;inset:12px;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.84);border-radius:10px}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
+.banner .rec{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 14px rgba(67,240,255,.6)}
+.banner p{margin:0;font-family:var(--f-mono)}
+.hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- phone layout: board first, compact score row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:10px}
+  .back{font-size:13px}
+  h1{font-size:24px}
+  .game{gap:10px}
+  .screen{padding:6px;border-radius:12px}
+  .banner{inset:6px}
+  .banner strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  header .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  header .btns .btn{padding:12px 0;font-size:15px}
+  /* keep the whole board on screen even in in-app browsers with a toolbar */
+  canvas{width:auto;max-width:100%;aspect-ratio:360/600;max-height:calc(100svh - 190px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="title">
+      <a class="back" href="../index.html">&larr; arcade</a>
+      <h1>네온 <span>스택</span></h1>
+    </div>
+    <div class="btns">
+      <button class="btn" id="bSound" aria-pressed="true">소리</button>
+      <button class="btn" id="bVib" aria-pressed="true">진동</button>
+      <button class="btn" id="bRestart">다시 시작</button>
+    </div>
+  </header>
+
+  <section class="game">
+    <div class="screen" id="stage">
+      <canvas id="cv" aria-label="네온 스택 게임 화면"></canvas>
+      <div class="banner" id="over" hidden>
+        <strong>게임 오버</strong>
+        <div class="rec" id="rec" hidden>새 최고 기록!</div>
+        <p id="overText"></p>
+        <div><button class="btn primary" id="bAgain">다시 하기</button></div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>점수</h2>
+        <dl class="stats">
+          <div><dt>점수</dt><dd id="sScore">0</dd></div>
+          <div><dt>최고 점수</dt><dd id="sBest">0</dd></div>
+          <div><dt>층</dt><dd id="sFloor">0</dd></div>
+          <div><dt>최고 층</dt><dd id="sBestF">0</dd></div>
+        </dl>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>플레이 방법</h2></summary>
+        <ul class="how">
+          <li>블록이 탑 위에서 좌우로 움직여요. 화면을 탭하면 아래로 떨어져요.</li>
+          <li>아래 블록에서 벗어난 부분은 잘려 나가고, 다음 블록은 그만큼 좁아져요.</li>
+          <li>딱 맞추면 퍼펙트! 1점을 더 받고, 3번 연속이면 블록이 다시 넓어져요.</li>
+          <li>가끔 특수 블록이 나와요. 황금(퍼펙트면 +5점), 넓게(다음 블록이 넓어짐), 느리게(다음 3개가 천천히).</li>
+          <li>10층마다 하늘이 바뀌어요. 15층부터는 빠르기가 출렁이고, 25층부터는 가끔 방향을 바꿔요.</li>
+          <li>블록을 완전히 빗나가면 게임 오버예요.</li>
+        </ul>
+        <p class="note">아이폰은 무음 모드에서는 소리가 나지 않아요. 점선은 내 최고 층 높이예요.</p>
+      </details>
+    </aside>
+  </section>
+</div>
+<input type="checkbox" switch id="hapticSw" class="hapsw" tabindex="-1" aria-hidden="true"><label for="hapticSw" id="hapticLab" class="hapsw" aria-hidden="true"></label>
+
+<script>
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* sound: tiny Web Audio synth, starts on first tap */
+const Sfx=(()=>{
+  let ac=null,out=null,on=store.get('ns_sound',true);
+  function unlock(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}
+  function tone(f,d,{type='triangle',vol=.2,slide=0,delay=0}={}){
+    if(!on||!ac||ac.state!=='running')return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();
+    o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03)}
+  const st=n=>Math.pow(2,n/12);
+  const SCALE=[0,2,4,7,9,12,14,16,19,21,24,26,28,31];   // major pentatonic, climbing with each perfect in a row
+  return{unlock,get on(){return on},toggle(){on=!on;store.set('ns_sound',on);return on},
+    place(){tone(300,.09,{vol:.16,slide:.7})},
+    perfect(c){const f=392*st(SCALE[Math.min(c-1,SCALE.length-1)]);tone(f,.2,{vol:.2});tone(f*2,.14,{type:'sine',vol:.07,delay:.03})},
+    grow(){[0,4,7,12].forEach((s,i)=>tone(523*st(s),.18,{type:'sine',vol:.12,delay:i*.06}))},
+    whoosh(){tone(700,.08,{type:'sine',vol:.06,slide:.45})},
+    cut(){tone(180,.12,{type:'square',vol:.05,slide:.5})},
+    near(){tone(260,.14,{type:'sine',vol:.1,slide:.8})},
+    gold(){[0,7,12,19].forEach((s,i)=>tone(659*st(s),.16,{type:'sine',vol:.12,delay:i*.05}))},
+    slow(){tone(500,.3,{type:'sine',vol:.12,slide:.5})},
+    zone(){[0,5,9,12].forEach((s,i)=>tone(330*st(s),.35,{type:'sine',vol:.1,delay:i*.09}))},
+    record(){[0,4,7,12,16,19].forEach((s,i)=>tone(523*st(s),.16,{vol:.12,delay:i*.06}))},
+    over(){[0,-3,-7,-12].forEach((s,i)=>tone(330*st(s),.3,{vol:.16,delay:i*.14}))},
+    best(){[0,4,7,12,16].forEach((s,i)=>tone(523*st(s),.2,{type:'sine',vol:.13,delay:i*.08}))}};
+})();
+/* haptics: Vibration API (Android) / switch-input trick (iOS 18+, only inside a tap) */
+const Haptic=(()=>{
+  let on=store.get('ns_vib',true);const lab=$('#hapticLab');
+  return{get on(){return on},toggle(){on=!on;store.set('ns_vib',on);return on},
+    tap(){if(!on)return;if(navigator.vibrate)navigator.vibrate(10);else if(lab)lab.click()},
+    bump(ms){if(on&&navigator.vibrate)navigator.vibrate(ms)}};
+})();
+const buzz=ms=>Haptic.bump(ms);
+
+/* game */
+const W=360,H=600,BH=26,BASEW=200,PERFECT=5,NEAR=11,GROUND=H-60,HOVER=BH*3;
+const cv=$('#cv'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);
+cv.width=W*dpr;cv.height=H*dpr;
+cv.style.maxWidth=W+'px';
+
+// special blocks: gold = perfect gives +5, wide = next block grows, slow = next 3 blocks move slowly
+const SPECIAL={gold:{c:'#ffc44d',label:'+5'},wide:{c:'#43f0ff',label:'넓게'},slow:{c:'#b38bff',label:'느리게'}};
+let stack,mover,faller,chips,parts,floats,score,floors,combo,maxCombo,perfects,state='ready',cam,camTo,flash,shake,dir,
+    slowLeft,growNext,lastSpecial,wave,zone,zoneFrom,zoneT0,recordShown,
+    best=store.get('ns_best2',0),bestF=store.get('ns_bestF',0);
+const hue=i=>(190+i*9)%360;
+const col=(i,l=60)=>`hsl(${hue(i)} 100% ${l}%)`;
+const baseSpeed=()=>Math.min(.42,.15+floors*.006);   // px per ms
+
+function reset(){
+  stack=[{x:(W-BASEW)/2,w:BASEW,i:0}];faller=null;chips=[];parts=[];floats=[];score=0;floors=0;combo=0;maxCombo=0;perfects=0;
+  cam=0;camTo=0;flash=0;shake=0;dir=1;slowLeft=0;growNext=0;lastSpecial=0;wave=null;zone=0;zoneFrom=0;zoneT0=-1e9;recordShown=bestF===0;
+  spawn();$('#over').hidden=true;disarm();hud();
+}
+function topY(n){return GROUND-n*BH}
+function spawn(){
+  const top=stack[stack.length-1],now=performance.now();dir=-dir;
+  let w=top.w;if(growNext){w=Math.min(BASEW,w+growNext);growNext=0}
+  let sp=null;
+  if(floors>=4&&floors-lastSpecial>=3&&Math.random()<.16){sp=['gold','wide','slow'][Math.floor(Math.random()*3)];lastSpecial=floors}
+  mover={x:dir>0?-w:W,w,i:stack.length,v:dir,t0:now,sp,
+    // from 25F some blocks turn around once mid-way to break the rhythm
+    flipAt:floors>=25&&Math.random()<.35?now+450+Math.random()*700:0};
+}
+function curSpeed(now){
+  let s=baseSpeed();
+  if(floors>=15)s*=1+.3*Math.sin((now-mover.t0)/320);   // from 15F the block surges and eases
+  if(slowLeft>0)s*=.55;
+  return s;
+}
+function drop(){
+  if(state==='ready'){state='play';return}
+  if(state!=='play'||faller)return;
+  faller={...mover,y:topY(stack.length)-HOVER,vy:.25};mover=null;Sfx.whoosh();
+}
+function land(){
+  const top=stack[stack.length-1],m=faller,now=performance.now(),y=topY(stack.length);faller=null;shake=Math.max(shake,2);
+  const off=m.x-top.x;let gain=1,w;
+  if(slowLeft>0)slowLeft--;
+  if(Math.abs(off)<=PERFECT){
+    m.x=top.x;combo++;perfects++;maxCombo=Math.max(maxCombo,combo);w=m.w;gain+=1;
+    if(perfects>=3&&w<BASEW){w=Math.min(BASEW,w+12);m.x=Math.max(0,top.x-6);perfects=0;Sfx.grow();floats.push({x:W/2,y:y-34,t:'블록이 넓어졌어요!',c:'#43f0ff',t0:now,s:16})}
+    else Sfx.perfect(combo);
+    stack.push({x:m.x,w,i:m.i,t0:now,sp:m.sp});
+    sparks(m.x,y,w,now);buzz(15);wave={k:stack.length-1,t0:now};
+    floats.push({x:m.x+w/2,y:y-8,t:combo>1?'퍼펙트 x'+combo:'퍼펙트',c:'#ffc44d',t0:now,s:15+Math.min(combo,8)});
+    if(m.sp==='gold'){gain+=5;Sfx.gold();flash=.2;floats.push({x:m.x+w/2,y:y-34,t:'황금 +5',c:'#ffc44d',t0:now+120,s:20})}
+  }else{
+    const l=Math.max(m.x,top.x),r=Math.min(m.x+m.w,top.x+top.w);w=r-l;
+    if(w<=0){chips.push({x:m.x,y,w:m.w,i:m.i,sp:m.sp,vy:m.vy*.4,vx:dir*.04,rot:0,vr:dir*.002});gameOver();return}
+    const cx=m.x<top.x?m.x:r,cw=m.w-w,s=m.x<top.x?-1:1;
+    chips.push({x:cx,y,w:cw,i:m.i,sp:m.sp,vy:m.vy*.4,vx:s*.05,rot:0,vr:s*.003});
+    stack.push({x:l,w,i:m.i,t0:now,sp:m.sp});dust(l,y,w,now);combo=0;perfects=0;Sfx.place();Sfx.cut();buzz(8);
+    if(Math.abs(off)<=NEAR){Sfx.near();floats.push({x:l+w/2,y:y-8,t:'아깝다!',c:'#e7eaf4',t0:now,s:15})}
+  }
+  if(m.sp==='wide'){growNext=36;floats.push({x:W/2,y:y-60,t:'다음 블록이 넓어져요',c:'#43f0ff',t0:now+150,s:15});Sfx.grow()}
+  if(m.sp==='slow'){slowLeft=3;floats.push({x:W/2,y:y-60,t:'3개 동안 느리게',c:'#b38bff',t0:now+150,s:15});Sfx.slow()}
+  floors=stack.length-1;score+=gain;
+  if(!recordShown&&floors>bestF){recordShown=true;Sfx.record();flash=.25;floats.push({x:W/2,y:y-90,t:'최고 기록 돌파!',c:'#43f0ff',t0:now+200,s:22})}
+  const z=Math.min(ZONES.length-1,Math.floor(floors/10));
+  if(z!==zone){zoneFrom=zone;zone=z;zoneT0=now;Sfx.zone();floats.push({x:W/2,y:y-120,t:`${z*10}층 · ${ZONES[z].name}`,c:'#e7eaf4',t0:now+300,s:22,life:1800})}
+  camTo=Math.max(0,(stack.length-11)*BH);
+  spawn();hud();
+}
+function dust(x,y,w,now){
+  for(let k=0;k<10;k++){const side=k%2;parts.push({x:side?x+w:x,y:y+BH-2,vx:(side?1:-1)*(.03+Math.random()*.08),vy:-.02-Math.random()*.06,c:'rgba(231,234,244,.7)',t0:now,life:350})}
+}
+function sparks(x,y,w,now){
+  for(let k=0;k<18;k++){const side=k%2,px=side?x+w:x;parts.push({x:px+(side?-1:1)*Math.random()*w*.15,y:y+Math.random()*BH,vx:(side?1:-1)*(.05+Math.random()*.12),vy:-.05-Math.random()*.1,c:col(stack.length,70),t0:now,life:500})}
+  flash=Math.max(flash,.1);
+}
+function gameOver(){
+  state='over';shake=8;const rec=score>best;
+  if(rec){best=score;store.set('ns_best2',best);Sfx.best()}else Sfx.over();
+  if(floors>bestF){bestF=floors;store.set('ns_bestF',bestF)}
+  buzz(120);
+  $('#rec').hidden=!rec;$('#overText').textContent=`점수 ${score} · ${floors}층`+(maxCombo>1?` · 최대 퍼펙트 x${maxCombo}`:'');
+  hud();setTimeout(()=>{if(state==='over')$('#over').hidden=false},500);
+}
+function hud(){$('#sScore').textContent=score;$('#sBest').textContent=best;$('#sFloor').textContent=floors;$('#sBestF').textContent=bestF}
+
+/* input: tap anywhere on the board */
+cv.addEventListener('pointerdown',e=>{e.preventDefault();Sfx.unlock();if(state==='play'&&!faller)Haptic.tap();drop()});
+{const sc=$('.screen');let last=0;
+ sc.addEventListener('touchend',e=>{if(e.timeStamp-last<400)e.preventDefault();last=e.timeStamp},{passive:false});
+ sc.addEventListener('dblclick',e=>e.preventDefault());
+ ['gesturestart','gesturechange'].forEach(n=>sc.addEventListener(n,e=>e.preventDefault()));}
+$('#bAgain').onclick=()=>{Sfx.unlock();reset();state='play'};
+// restart needs a second tap within 2.5s so a stray tap never wipes a tall tower
+let armT=0,armTimer=0;
+function disarm(){armT=0;clearTimeout(armTimer);const b=$('#bRestart');b.textContent='다시 시작';b.classList.remove('armed')}
+$('#bRestart').onclick=()=>{
+  Sfx.unlock();
+  if(state!=='play'||floors<3||armT){reset();state='play';return}
+  armT=1;const b=$('#bRestart');b.textContent='한 번 더 누르면 재시작';b.classList.add('armed');armTimer=setTimeout(disarm,2500);
+};
+function syncToggles(){
+  const s=$('#bSound'),v=$('#bVib');
+  s.textContent=Sfx.on?'소리 켬':'소리 끔';s.classList.toggle('off',!Sfx.on);s.setAttribute('aria-pressed',String(Sfx.on));
+  v.textContent=Haptic.on?'진동 켬':'진동 끔';v.classList.toggle('off',!Haptic.on);v.setAttribute('aria-pressed',String(Haptic.on));
+}
+$('#bSound').onclick=()=>{Sfx.unlock();Sfx.toggle();syncToggles();Sfx.place()};
+$('#bVib').onclick=()=>{Haptic.toggle();syncToggles();Haptic.tap()};
+syncToggles();
+
+/* backdrops: a new sky every 10 floors */
+const rnd=mulberry(20261009);
+const STARS=Array.from({length:90},()=>({x:rnd()*W,y:rnd()*H,r:.4+rnd()*1.3,p:rnd()*7}));
+const TOWERS=[];{let x=-10;while(x<W+10){const w=22+rnd()*34,h=50+rnd()*120;TOWERS.push({x,w,h,win:Array.from({length:Math.floor(h/12)*Math.floor(w/9)},()=>rnd()<.35)});x+=w+2+rnd()*6}}
+const CLOUDS=Array.from({length:9},()=>({x:rnd()*W*1.4,y:40+rnd()*(H-140),w:70+rnd()*120,s:.004+rnd()*.008}));
+const CONST=Array.from({length:5},()=>{const cx=60+rnd()*(W-120),cy=200+rnd()*(H-340);return Array.from({length:4+Math.floor(rnd()*3)},()=>[cx+(rnd()-.5)*110,cy+(rnd()-.5)*90])});
+function stars(now,a,count=90){for(let k=0;k<count;k++){const s=STARS[k];ctx.globalAlpha=a*(.35+.65*Math.abs(Math.sin(now/900+s.p)));ctx.fillStyle='#e7eaf4';ctx.fillRect(s.x,s.y,s.r,s.r)}ctx.globalAlpha=1}
+const ZONES=[
+  {name:'도시의 밤',sky:['#070912','#141a33'],draw(now,a){
+    stars(now,a*.4,30);
+    const base=H-40+Math.min(cam*.35,260);
+    for(const t of TOWERS){ctx.globalAlpha=a;ctx.fillStyle='#0b0f1f';ctx.fillRect(t.x,base-t.h,t.w,t.h);
+      let n=0;for(let yy=base-t.h+6;yy<base-6;yy+=12)for(let xx=t.x+4;xx<t.x+t.w-5;xx+=9){if(t.win[n++]){ctx.globalAlpha=a*.55;ctx.fillStyle=n%3?'#ffc44d':'#43f0ff';ctx.fillRect(xx,yy,3,4)}}}
+    ctx.globalAlpha=1}},
+  {name:'구름 위',sky:['#0b1030','#26285a'],draw(now,a){
+    stars(now,a*.3,40);
+    for(const c of CLOUDS){const x=((c.x+now*c.s)%(W+c.w*2))-c.w;ctx.globalAlpha=a*.13;ctx.fillStyle='#c9d2ff';
+      ctx.beginPath();ctx.ellipse(x,c.y,c.w*.5,c.w*.16,0,0,7);ctx.ellipse(x+c.w*.22,c.y-c.w*.08,c.w*.28,c.w*.14,0,0,7);ctx.fill()}
+    ctx.globalAlpha=1}},
+  {name:'오로라',sky:['#040b12','#0a1a22'],draw(now,a){
+    stars(now,a*.6,60);
+    [['#5dffa0',.16,0],['#43f0ff',.11,1.7],['#ff4fd2',.09,3.1]].forEach(([c,al,ph],j)=>{
+      ctx.globalAlpha=a*al;ctx.fillStyle=c;ctx.beginPath();const y0=120+j*70;ctx.moveTo(0,y0);
+      for(let x=0;x<=W;x+=12)ctx.lineTo(x,y0+Math.sin(x/60+now/1400+ph)*26+Math.sin(x/23+now/900)*6);
+      for(let x=W;x>=0;x-=12)ctx.lineTo(x,y0+90+Math.sin(x/50+now/1600+ph)*30);ctx.closePath();ctx.fill()});
+    ctx.globalAlpha=1}},
+  {name:'우주',sky:['#030409','#0b0820'],draw(now,a){
+    stars(now,a);
+    ctx.globalAlpha=a;const px=W-70,py=150;const pg=ctx.createRadialGradient(px-12,py-12,4,px,py,38);pg.addColorStop(0,'#ff8ad8');pg.addColorStop(1,'#3a0f3a');
+    ctx.fillStyle=pg;ctx.beginPath();ctx.arc(px,py,38,0,7);ctx.fill();
+    ctx.strokeStyle='rgba(255,196,77,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(px,py,62,14,-.35,0,7);ctx.stroke();ctx.globalAlpha=1}},
+  {name:'별자리',sky:['#020205','#0a0614'],draw(now,a){
+    stars(now,a);
+    ctx.globalAlpha=a*.5;ctx.strokeStyle='#43f0ff';ctx.lineWidth=1;
+    for(const g of CONST){ctx.beginPath();g.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke()}
+    ctx.globalAlpha=a;ctx.fillStyle='#e7eaf4';for(const g of CONST)for(const p of g){ctx.beginPath();ctx.arc(p[0],p[1],2,0,7);ctx.fill()}
+    const t=(now%5000)/5000;if(t<.25){const k=t/.25;ctx.globalAlpha=a*(1-k);ctx.strokeStyle='#ffffff';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(40+k*260,60+k*90);ctx.lineTo(10+k*260,45+k*90);ctx.stroke()}
+    ctx.globalAlpha=1}},
+];
+function sky(z,a){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,ZONES[z].sky[0]);g.addColorStop(1,ZONES[z].sky[1]);ctx.globalAlpha=a;ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1}
+
+/* drawing */
+function block(x,y,w,i,a=1,sp=null,glow=0){
+  ctx.save();ctx.globalAlpha=a;const c=sp?SPECIAL[sp].c:col(i);
+  ctx.shadowColor=c;ctx.shadowBlur=14+glow*16;ctx.fillStyle=sp?'#15121f':`hsl(${hue(i)} 70% 12%)`;ctx.fillRect(x,y,w,BH-2);
+  ctx.shadowBlur=0;ctx.strokeStyle=c;ctx.lineWidth=2;ctx.strokeRect(x+1,y+1,w-2,BH-4);
+  ctx.fillStyle=sp?c+'33':`hsl(${hue(i)} 100% 70% / .18)`;ctx.fillRect(x+3,y+3,w-6,5);
+  if(glow>0){ctx.globalAlpha=a*glow;ctx.strokeStyle='#ffffff';ctx.lineWidth=2.5;ctx.strokeRect(x,y,w,BH-2)}
+  if(sp&&w>44){ctx.globalAlpha=a;ctx.fillStyle=c;ctx.font='700 12px "IBM Plex Sans KR","JetBrains Mono",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(SPECIAL[sp].label,x+w/2,y+BH/2)}
+  ctx.restore();
+}
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min(40,now-lastT);lastT=now;
+  if(state==='play'&&mover){
+    if(mover.flipAt&&now>=mover.flipAt&&mover.x>0&&mover.x+mover.w<W){mover.v=-mover.v;mover.flipAt=0}
+    mover.x+=mover.v*curSpeed(now)*dt;
+    if(mover.x>W-mover.w*.15&&mover.v>0)mover.v=-1;if(mover.x<-mover.w*.85&&mover.v<0)mover.v=1}
+  if(faller){faller.vy+=.004*dt;faller.y+=faller.vy*dt;if(faller.y>=topY(stack.length)){faller.y=topY(stack.length);land()}}
+  cam+=(camTo-cam)*Math.min(1,dt*.008);
+  const sx=shake?(Math.random()-.5)*shake:0;shake=Math.max(0,shake-dt*.02);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  // sky: cross-fade into the new zone over a second
+  const zt=Math.min(1,(now-zoneT0)/1200);
+  if(zt<1){sky(zoneFrom,1);ZONES[zoneFrom].draw(now,1-zt)}
+  sky(zone,zt);ZONES[zone].draw(now,zt);
+  ctx.translate(sx,cam);
+  ctx.fillStyle='rgba(139,147,173,.4)';ctx.font='500 10px "JetBrains Mono",monospace';ctx.textAlign='left';
+  const first=Math.max(0,Math.floor((cam-40)/BH/10)*10);
+  for(let n=first;n<first+40;n+=10){const y=topY(n);if(y-cam>H+20)continue;ctx.fillRect(0,y,8,1);if(n>0)ctx.fillText(n+'F',11,y+4)}
+  // best-floor line
+  if(bestF>0){const y=topY(bestF);ctx.save();ctx.setLineDash([6,6]);ctx.lineDashOffset=-now*.02;ctx.strokeStyle=floors>=bestF?'rgba(67,240,255,.25)':'rgba(67,240,255,.7)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#43f0ff';ctx.font='600 11px "IBM Plex Sans KR",sans-serif';ctx.textAlign='right';ctx.fillText(`최고 ${bestF}층`,W-8,y-5);ctx.restore()}
+  ctx.fillStyle='#20283a';ctx.fillRect(0,GROUND,W,2);
+  for(let k=0;k<stack.length;k++){const b=stack[k];if(topY(k)+cam< -BH||topY(k)+cam>H+BH)continue;
+    let glow=0;if(wave){const tw=(now-wave.t0)/28-(wave.k-k);if(tw>0&&tw<5)glow=1-tw/5}
+    const t=b.t0?(now-b.t0)/160:1;
+    if(t<1){const q=Math.sin(t*Math.PI)*.18;ctx.save();ctx.translate(b.x+b.w/2,topY(k)+BH);ctx.scale(1+q*.5,1-q);block(-b.w/2,-BH,b.w,b.i,1,b.sp,glow);ctx.restore()}
+    else block(b.x,topY(k),b.w,b.i,1,b.sp,glow)}
+  const hov=state!=='over'?(mover||faller):null;
+  if(hov){const base=topY(stack.length),y=faller?faller.y:base-HOVER;
+    const gr=ctx.createLinearGradient(0,y+BH,0,base+BH);gr.addColorStop(0,'rgba(231,234,244,.09)');gr.addColorStop(1,'rgba(231,234,244,0)');
+    ctx.fillStyle=gr;ctx.fillRect(hov.x,y+BH,hov.w,base-y);
+    block(hov.x,y,hov.w,hov.i,1,hov.sp,hov.sp==='gold'?.25+.25*Math.sin(now/120):0)}
+  chips=chips.filter(c=>{c.vy+=.0016*dt;c.y+=c.vy*dt;c.x+=c.vx*dt;c.rot+=c.vr*dt;ctx.save();ctx.translate(c.x+c.w/2,c.y+BH/2);ctx.rotate(c.rot);block(-c.w/2,-BH/2,c.w,c.i,.85,c.sp);ctx.restore();return c.y+cam<H+80});
+  parts=parts.filter(p=>{const t=(now-p.t0)/p.life;if(t>=1)return false;p.x+=p.vx*dt;p.y+=p.vy*dt;ctx.globalAlpha=1-t;ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,2.5,2.5);ctx.globalAlpha=1;return true});
+  floats=floats.filter(f=>{const L=f.life||900,t=(now-f.t0)/L;if(t>=1)return false;if(t<0)return true;ctx.save();ctx.globalAlpha=t<.6?1:1-(t-.6)/.4;ctx.fillStyle=f.c;ctx.shadowColor=f.c;ctx.shadowBlur=10;ctx.font=`700 ${f.s}px "JetBrains Mono","Black Han Sans",monospace`;ctx.textAlign='center';ctx.fillText(f.t,f.x,f.y-t*24);ctx.restore();return true});
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(flash>0){ctx.fillStyle=`rgba(255,255,255,${flash})`;ctx.fillRect(0,0,W,H);flash=Math.max(0,flash-dt*.001)}
+  // HUD
+  ctx.textAlign='center';ctx.fillStyle='#e7eaf4';ctx.shadowColor='#43f0ff';ctx.shadowBlur=state==='play'?12:0;
+  ctx.font='700 52px "JetBrains Mono",monospace';ctx.fillText(score,W/2,72);ctx.shadowBlur=0;
+  ctx.font='500 12px "JetBrains Mono","IBM Plex Sans KR",monospace';ctx.fillStyle='#8b93ad';ctx.fillText(`${floors}층 · 최고 ${best}점`,W/2,94);
+  if(perfects>0&&state==='play'){for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(W/2-14+k*14,110,4,0,7);ctx.fillStyle=k<perfects?'#ffc44d':'#2a3247';ctx.fill()}}
+  if(slowLeft>0&&state==='play'){ctx.fillStyle='#b38bff';ctx.font='600 12px "IBM Plex Sans KR",sans-serif';ctx.fillText(`느리게 ${slowLeft}`,W/2,130)}
+  if(state==='ready'){ctx.fillStyle=`rgba(255,79,210,${.6+.4*Math.sin(now/300)})`;ctx.font='600 18px "IBM Plex Sans KR",sans-serif';ctx.fillText('탭해서 시작',W/2,H/2-40)}
+  requestAnimationFrame(frame);
+}
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+reset();requestAnimationFrame(frame);
+</script>
+</html>
