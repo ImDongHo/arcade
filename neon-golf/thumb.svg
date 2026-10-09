@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200">
+  <defs><filter id="g" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <rect width="320" height="200" fill="#070912"/>
+  <path d="M40 30h240v80h-100v70H40z" fill="#0c1a18" stroke="#5dffa0" stroke-width="2.5" filter="url(#g)"/>
+  <rect x="150" y="62" width="40" height="12" rx="3" fill="#1a2135" stroke="#ff4fd2" stroke-width="2"/>
+  <circle cx="245" cy="70" r="9" fill="#020305" stroke="#ffc44d" stroke-width="2"/>
+  <path d="M245 70V36" stroke="#e7eaf4" stroke-width="1.5"/><path d="M245 36l16 6-16 6z" fill="#ff4fd2"/>
+  <path d="M80 150L120 96L230 74" fill="none" stroke="#43f0ff" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/>
+  <path d="M80 150L56 178" stroke="#e7eaf4" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
+  <g fill="#e7eaf4" opacity=".5"><circle cx="64" cy="168" r="2"/><circle cx="70" cy="161" r="1.5"/></g>
+  <circle cx="80" cy="150" r="7" fill="#fff" filter="url(#g)"/>
+  <text x="300" y="176" text-anchor="end" font-family="Consolas,monospace" font-size="13" fill="#8b93ad">HOLE 1 · PAR 2</text>
+</svg>

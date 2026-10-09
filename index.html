@@ -61,6 +61,10 @@ header{display:grid;gap:6px}
 .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
 .meta .m{font:500 12px var(--f-mono);color:var(--fg)}
 .tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 8px}
+.card.is-soon{cursor:default}
+.card.is-soon .thumb img{opacity:.55;filter:saturate(.7)}
+.card.is-soon:hover,.card.is-soon:focus-visible{transform:none;border-color:var(--line);box-shadow:none}
+.card.is-soon:hover .thumb img{transform:none}
 .next{display:grid;place-content:center;gap:6px;text-align:center;min-height:260px;border:1.5px dashed var(--line);border-radius:16px;color:var(--muted);padding:24px}
 .next b{font:700 32px var(--f-mono);color:var(--line)}
 footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px;display:grid;gap:12px}
@@ -100,7 +104,7 @@ const CLS={play:'play-ok',proto:'proto',soon:'soon'};
 const games=window.GAMES||[];
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // categories shown as filter buttons; add a line here when a new kind of game arrives
-const CATS=[{id:'all',name:'전체'},{id:'puzzle',name:'퍼즐'},{id:'arcade',name:'아케이드'}];
+const CATS=[{id:'all',name:'전체'},{id:'puzzle',name:'퍼즐'},{id:'arcade',name:'아케이드'},{id:'relax',name:'편하게 놀기'}];
 const grid=document.getElementById('grid');
 let cur=(()=>{const h=location.hash.slice(1);if(CATS.some(c=>c.id===h))return h;try{return localStorage.getItem('home_cat')||'all'}catch(e){return'all'}})();
 if(!CATS.some(c=>c.id===cur))cur='all';
@@ -109,26 +113,26 @@ const list=cur==='all'?games:games.filter(g=>g.category===cur);
 document.getElementById('cats').innerHTML=CATS.filter(c=>c.id==='all'||games.some(g=>g.category===c.id)).map(c=>{
   const k=c.id==='all'?games.length:games.filter(g=>g.category===c.id).length;
   return`<button class="cat" type="button" data-cat="${c.id}" aria-pressed="${c.id===cur}">${esc(c.name)}<b>${k}</b></button>`}).join('');
-grid.innerHTML=list.map(g=>`
-  <a class="card" href="${esc(g.url)}" style="--c:${esc(g.color||'#43f0ff')}" aria-label="${esc(g.title)} 플레이">
+grid.innerHTML=list.map(g=>{const soon=g.status==='soon';return`
+  <${soon?'div':'a'} class="card${soon?' is-soon':''}" ${soon?'':`href="${esc(g.url)}"`} style="--c:${esc(g.color||'#43f0ff')}" ${soon?'aria-label="'+esc(g.title)+' 준비 중"':'aria-label="'+esc(g.title)+' 플레이"'}>
     <div class="thumb">
       <img src="${esc(g.thumb)}" alt="" loading="lazy">
       <span class="chip ${CLS[g.status]||'soon'}">${LABEL[g.status]||''}</span>
-      <div class="play"><i>▶ 플레이</i></div>
+      ${soon?'':'<div class="play"><i>▶ 플레이</i></div>'}
     </div>
     <div class="body">
       <h2>${esc(g.title)}</h2>
       <p>${esc(g.desc)}</p>
       <div class="meta">${g.meta?`<span class="m">${esc(g.meta)}</span>`:''}${(g.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
     </div>
-  </a>`).join('')+`
+  </${soon?'div':'a'}>`}).join('')+`
   <div class="next"><b>+</b><span>다음 게임 자리</span></div>`;
 }
 document.getElementById('cats').addEventListener('click',e=>{const b=e.target.closest('.cat');if(!b)return;cur=b.dataset.cat;try{localStorage.setItem('home_cat',cur)}catch(_){}
   history.replaceState(null,'',cur==='all'?location.pathname:'#'+cur);draw()});
 draw();
 const n=s=>games.filter(g=>g.status===s).length;
-document.getElementById('bar').innerHTML=`<span>게임 <b>${games.length}</b>개</span><span>플레이 가능 <b>${n('play')}</b></span><span>프로토타입 <b>${n('proto')}</b></span>`;
+document.getElementById('bar').innerHTML=`<span>게임 <b>${games.length}</b>개</span><span>플레이 가능 <b>${n('play')}</b></span><span>프로토타입 <b>${n('proto')}</b></span><span>준비 중 <b>${n('soon')}</b></span>`;
 
 /* reset all game records — only the exact keys our games use, so nothing else stored on this browser is touched.
    (When a new game saves something, add its key here.) */

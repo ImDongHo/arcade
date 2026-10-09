@@ -6,9 +6,10 @@
 ## 구조
 - index.html: 메인 화면. games.js의 목록을 읽어 카드로 보여준다.
 - games.js: 게임 목록. 새 게임은 객체 하나 추가
-  (id, category: puzzle|arcade, title, desc, url, thumb, color, status: play|proto|soon, meta, tags).
-  메인 화면 위쪽 분류 버튼(전체/퍼즐/아케이드)이 category로 나눈다. 게임이 더 많아지면 분류를 더 나눈다
+  (id, category: puzzle|arcade|relax, title, desc, url, thumb, color, status: play|proto|soon, meta, tags).
+  메인 화면 위쪽 분류 버튼(전체/퍼즐/아케이드/편하게 놀기)이 category로 나눈다. 게임이 더 많아지면 분류를 더 나눈다
   (새 분류는 index.html의 CATS에 한 줄 추가).
+  status: soon(준비 중)은 썸네일만 먼저 걸어 두는 카드로, 눌러도 이동하지 않는다. 게임을 만들면 play로 바꾼다.
 - 게임마다 폴더 하나: index.html(게임 전체가 한 파일) + thumb.svg(320×200 네온 썸네일).
 - shared/zoom-reset.js: 확대 상태에서 "원래 크기로" 버튼. 모든 페이지에 포함.
 - icons/: 홈 화면 아이콘. tools/: 레벨 생성기(node).

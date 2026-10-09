@@ -1,6 +1,6 @@
 // 게임 목록 — 새 게임을 만들면 여기에 한 줄(객체 하나)만 추가하면 메인 화면에 카드가 생겨요.
 // status: "play"(플레이 가능) | "proto"(프로토타입) | "soon"(준비 중)
-// category: "puzzle"(퍼즐) | "arcade"(아케이드) — 메인 화면 분류 버튼에 쓰여요. 새 분류는 index.html의 CATS에 한 줄 추가.
+// category: "puzzle"(퍼즐) | "arcade"(아케이드) | "relax"(편하게 놀기) — 메인 화면 분류 버튼에 쓰여요. 새 분류는 index.html의 CATS에 한 줄 추가.
 window.GAMES = [
   {
     id: "laser-mirror",
@@ -109,5 +109,53 @@ window.GAMES = [
     status: "play",
     meta: "무한 모드 · 되돌리기",
     tags: ["퍼즐", "스와이프"]
+  },
+  {
+    id: "neon-blocks",
+    category: "puzzle",
+    title: "네온 블록 채우기",
+    desc: "조각을 판에 끌어다 놓고 한 줄을 채우면 사라지는 블록 퍼즐",
+    url: "neon-blocks/index.html",
+    thumb: "neon-blocks/thumb.svg",
+    color: "#43f0ff",
+    status: "soon",
+    meta: "끝없는 점수 도전",
+    tags: ["퍼즐", "드래그"]
+  },
+  {
+    id: "box-push",
+    category: "puzzle",
+    title: "상자 밀기",
+    desc: "상자를 밀어 표시된 자리에 넣는 퍼즐",
+    url: "box-push/index.html",
+    thumb: "box-push/thumb.svg",
+    color: "#ffc44d",
+    status: "soon",
+    meta: "30스테이지 · 3챕터",
+    tags: ["퍼즐", "스와이프"]
+  },
+  {
+    id: "neon-golf",
+    category: "arcade",
+    title: "네온 미니골프",
+    desc: "공을 당겼다 놓아 벽에 튕기며 홀에 넣는 미니골프",
+    url: "neon-golf/index.html",
+    thumb: "neon-golf/thumb.svg",
+    color: "#5dffa0",
+    status: "soon",
+    meta: "30홀",
+    tags: ["아케이드", "드래그"]
+  },
+  {
+    id: "neon-mandala",
+    category: "relax",
+    title: "네온 만다라",
+    desc: "한 번 그으면 6방향으로 대칭 그림이 그려지는 그림판",
+    url: "neon-mandala/index.html",
+    thumb: "neon-mandala/thumb.svg",
+    color: "#ff4fd2",
+    status: "soon",
+    meta: "점수 없이 그리기",
+    tags: ["편하게 놀기", "드래그"]
   }
 ];
