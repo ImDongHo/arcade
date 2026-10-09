@@ -1,8 +1,10 @@
 // 게임 목록 — 새 게임을 만들면 여기에 한 줄(객체 하나)만 추가하면 메인 화면에 카드가 생겨요.
 // status: "play"(플레이 가능) | "proto"(프로토타입) | "soon"(준비 중)
+// category: "puzzle"(퍼즐) | "arcade"(아케이드) — 메인 화면 분류 버튼에 쓰여요. 새 분류는 index.html의 CATS에 한 줄 추가.
 window.GAMES = [
   {
     id: "laser-mirror",
+    category: "puzzle",
     title: "레이저 거울 반사",
     desc: "거울을 돌려 빛으로 모든 타깃을 밝히는 퍼즐",
     url: "laser-mirror/index.html",
@@ -14,6 +16,7 @@ window.GAMES = [
   },
   {
     id: "parking-escape",
+    category: "puzzle",
     title: "주차장 탈출",
     desc: "꽉 막힌 차들을 밀어서 빨간 차를 빼내는 퍼즐",
     url: "parking-escape/index.html",
@@ -25,6 +28,7 @@ window.GAMES = [
   },
   {
     id: "neon-merge",
+    category: "arcade",
     title: "네온 머지",
     desc: "같은 숫자를 합쳐서 2048까지 키우는 물리 게임",
     url: "neon-merge/index.html",
@@ -36,6 +40,7 @@ window.GAMES = [
   },
   {
     id: "neon-bubble",
+    category: "arcade",
     title: "네온 버블",
     desc: "조준해서 쏘고 같은 색 3개를 붙여 터뜨리는 버블 슈터",
     url: "neon-bubble/index.html",
@@ -47,6 +52,7 @@ window.GAMES = [
   },
   {
     id: "neon-stack",
+    category: "arcade",
     title: "네온 스택",
     desc: "위에서 떨어지는 블록을 타이밍 맞춰 높이 쌓는 게임",
     url: "neon-stack/index.html",
@@ -58,6 +64,7 @@ window.GAMES = [
   },
   {
     id: "color-sort",
+    category: "puzzle",
     title: "색 정렬 튜브",
     desc: "튜브를 탭해서 색 구슬을 옮겨 한 가지 색씩 맞추는 퍼즐",
     url: "color-sort/index.html",
@@ -69,6 +76,7 @@ window.GAMES = [
   },
   {
     id: "orbit-jump",
+    category: "arcade",
     title: "궤도 점프",
     desc: "행성을 도는 공을 탭 한 번으로 날려 다음 궤도에 올라타는 게임",
     url: "orbit-jump/index.html",
@@ -80,6 +88,7 @@ window.GAMES = [
   },
   {
     id: "one-stroke",
+    category: "puzzle",
     title: "한붓그리기",
     desc: "모든 선을 한 번씩만 지나가게 손가락으로 그리는 퍼즐",
     url: "one-stroke/index.html",
@@ -91,6 +100,7 @@ window.GAMES = [
   },
   {
     id: "neon-2048",
+    category: "puzzle",
     title: "네온 2048",
     desc: "밀어서 같은 숫자를 합치는 2048, 별 타일과 끝없는 목표",
     url: "neon-2048/index.html",
