@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>한붓그리기</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: drawing board — neon line drawing on dark slate + record panel on top, stage map below. Single dark world by choice. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --cyan:#43f0ff; --pink:#ff4fd2; --amber:#ffc44d; --green:#5dffa0;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:22px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content;margin-bottom:-14px}
+.back:hover{color:var(--fg)}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 20px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:var(--pink);text-shadow:0 0 18px rgba(255,79,210,.45)}
+.chap{font:600 14px var(--f-body);color:var(--muted);letter-spacing:.04em}
+.chap b{color:var(--fg)}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;min-width:0}
+.board{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#05070c;display:flex;justify-content:center}
+canvas{display:block;width:100%;height:auto;max-width:520px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.msg{min-height:22px;margin:8px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 13px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:var(--pink);color:#1a0316;border-color:var(--pink)}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.banner{position:absolute;inset:0;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.6);border-radius:16px;z-index:5;padding:16px}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
+.banner .badge{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 12px rgba(67,240,255,.6)}
+.banner p{margin:0;font-family:var(--f-mono)}
+.banner .btns{justify-content:center}
+.map{display:grid;gap:16px}
+.map-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.map-head h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0}
+.dev{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.chapter{display:grid;gap:8px}
+.chapter h3{margin:0;font:600 14px var(--f-body);color:var(--muted)}
+.chapter h3 b{color:var(--fg);margin-right:6px}
+.tiles{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}
+@media (max-width:560px){.tiles{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.tile{background:#121725;border:1px solid var(--line);border-radius:10px;padding:6px 2px 4px;color:var(--fg);cursor:pointer;display:grid;justify-items:center;font-family:var(--f-mono);touch-action:manipulation}
+.tile .n{font-weight:700;font-size:15px}
+.tile .s{font-size:11px;color:#2e3548;min-height:16px}
+.tile.clear .s{color:var(--green)}
+.tile .d{font-size:10px;color:var(--muted)}
+.tile[aria-current="true"]{border-color:var(--pink);box-shadow:0 0 0 1px var(--pink) inset,0 0 16px -6px var(--pink)}
+.tile:disabled{opacity:.35;cursor:default}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- phone layout: board first, compact status row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:12px}
+  .back{margin-bottom:0;font-size:13px}
+  header{gap:0 12px}
+  h1{font-size:24px}
+  .chap{font-size:12px;letter-spacing:0}
+  .game{gap:10px}
+  .board{border-radius:12px}
+  .banner{border-radius:12px}
+  .banner strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  .side .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  .side .btns .btn{padding:12px 0;font-size:15px}
+  .map-head h2{font-size:20px}
+}
+</style>
+
+<div class="wrap">
+  <a class="back" href="../index.html">&larr; arcade</a>
+  <header>
+    <h1>한붓<span>그리기</span></h1>
+    <div class="chap" id="chapLabel"></div>
+  </header>
+
+  <section class="game">
+    <div class="screen">
+      <div class="board">
+        <canvas id="cv" aria-label="한붓그리기 그림판"></canvas>
+        <div class="banner" id="win" hidden>
+          <strong>완성!</strong>
+          <p id="winText"></p>
+          <div class="btns"><button class="btn" id="winRetry">다시 그리기</button><button class="btn primary" id="winNext">다음 스테이지</button></div>
+        </div>
+      </div>
+      <p class="msg" id="msg" aria-live="polite"></p>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>현재 스테이지</h2>
+        <dl class="stats">
+          <div><dt>스테이지</dt><dd id="sStage">-</dd></div>
+          <div><dt>그린 선</dt><dd id="sDone">0</dd></div>
+          <div><dt>남은 선</dt><dd id="sLeft">-</dd></div>
+          <div><dt>깬 판</dt><dd id="sClear">0</dd></div>
+        </dl>
+        <div class="btns">
+          <button class="btn" id="bHint">힌트</button>
+          <button class="btn" id="bUndo">되돌리기</button>
+          <button class="btn" id="bReset">다시</button>
+          <button class="btn" id="bSound" aria-pressed="true">소리</button>
+        </div>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>플레이 방법</h2></summary>
+        <ul class="how">
+          <li>아무 점이나 누른 채로, 선을 따라 다음 점까지 끌면 선이 칠해져요.</li>
+          <li>모든 선을 한 번씩만 지나가면 완성이에요.</li>
+          <li>손을 떼도 괜찮아요. 빛나는 끝점을 다시 누르면 이어서 그려요.</li>
+          <li>방금 그린 선을 거꾸로 따라가면 한 칸 되돌아가요.</li>
+          <li>힌트는 시작할 점과 다음 선을 알려줘요. 마음껏 써도 돼요.</li>
+        </ul>
+        <p class="note">모든 그림은 실제로 한 번에 그릴 수 있는 길을 따라 만들고 따로 검증했어요. 다섯 번째 판은 쉬어가는 판이고, 열 번째 판이 챕터의 최고점이에요.</p>
+      </details>
+    </aside>
+  </section>
+
+  <section class="card map">
+    <div class="map-head">
+      <h2>스테이지</h2>
+      <label class="dev"><input type="checkbox" id="devAll"> 개발자 모드: 전체 열기</label>
+    </div>
+    <div id="chapters" class="map"></div>
+  </section>
+</div>
+
+<script src="levels.js"></script>
+<script>
+const $=q=>document.querySelector(q);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const LEVELS=window.STROKE_LEVELS||[],STAGES=LEVELS.length;
+const CHAPTERS=[{name:'첫 선',hint:'가로·세로·대각선으로만 이어져요'},{name:'별자리',hint:'멀리 건너뛰는 긴 선이 생겨요'},{name:'큰 그림',hint:'더 넓은 판에 선이 많아져요'}];
+const Sfx=(()=>{
+  let ac=null,out=null,on=store.get('os_sound',true);
+  function unlock(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}
+  function tone(f,d,{type='sine',vol=.18,slide=0,delay=0}={}){if(!on||!ac||ac.state!=='running')return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03)}
+  const st=n=>Math.pow(2,n/12),SC=[0,2,4,7,9];
+  const note=k=>262*st(SC[k%5]+12*Math.floor(k/5));
+  return{unlock,get on(){return on},toggle(){on=!on;store.set('os_sound',on);return on},
+    start(){tone(392,.08,{type:'triangle',vol:.12})},
+    edge(k){tone(note(k),.18,{type:'triangle',vol:.15})},
+    undo(){tone(220,.08,{vol:.1,slide:.8})},
+    bad(){tone(150,.12,{type:'square',vol:.05})},
+    win(){[0,4,7,12,16,19,24].forEach((s,i)=>tone(392*st(s),.25,{type:'triangle',vol:.12,delay:i*.07}))}};
+})();
+const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
+
+const W=360,H=420,PADX=44,PADY=44;
+const cv=$('#cv'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);
+cv.width=W*dpr;cv.height=H*dpr;
+let lv=0,L,pts=[],path=[],usedOrder=[],drawing=false,finger=null,hint=null,winT=0,devAll=false,done=store.get('os_done',{}),last=store.get('os_last',0);
+const unlocked=i=>devAll||i===0||!!done[i-1]||!!done[i];
+
+function load(i){
+  lv=i;L=LEVELS[i];
+  // fit the drawing into the board, centered, with an upper limit on spacing
+  const xs=L.nodes.map(n=>n[0]),ys=L.nodes.map(n=>n[1]);
+  const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);
+  const sp=Math.min(78,(W-PADX*2)/Math.max(1,maxx-minx),(H-PADY*2)/Math.max(1,maxy-miny));
+  const ox=W/2-(minx+maxx)/2*sp,oy=H/2-(miny+maxy)/2*sp;
+  pts=L.nodes.map(([x,y])=>[ox+x*sp,oy+y*sp]);
+  path=[];usedOrder=[];hint=null;drawing=false;finger=null;winT=0;store.set('os_last',i);
+  const ch=Math.floor(i/10);$('#chapLabel').innerHTML=`챕터 ${ch+1} · <b>${CHAPTERS[ch].name}</b> · ${CHAPTERS[ch].hint}`;
+  $('#win').hidden=true;msg(i===0&&!done[0]?'아무 점이나 누른 채로, 선을 따라 다음 점까지 끌어 보세요.':'');hud();map();
+}
+const msg=t=>{$('#msg').textContent=t};
+const edgeIdx=(a,b)=>L.edges.findIndex(e=>(e[0]===a&&e[1]===b)||(e[0]===b&&e[1]===a));
+const isUsed=i=>usedOrder.includes(i);
+function hud(){
+  $('#sStage').textContent=`${lv+1}/${STAGES}`;$('#sDone').textContent=usedOrder.length;$('#sLeft').textContent=L.edges.length-usedOrder.length;
+  $('#sClear').textContent=Object.keys(done).length;$('#bUndo').disabled=!path.length;
+}
+function map(){
+  const box=$('#chapters');box.textContent='';
+  CHAPTERS.forEach((c,ci)=>{
+    const sec=document.createElement('div');sec.className='chapter';
+    sec.innerHTML=`<h3><b>챕터 ${ci+1} · ${c.name}</b>${c.hint}</h3>`;
+    const g=document.createElement('div');g.className='tiles';
+    for(let i=ci*10;i<ci*10+10;i++){
+      const b=document.createElement('button');b.type='button';b.className='tile'+(done[i]?' clear':'');b.disabled=!unlocked(i);
+      if(i===lv)b.setAttribute('aria-current','true');
+      b.innerHTML=`<span class="n">${i+1}</span><span class="s">${done[i]?'✓':'·'}</span><span class="d">선 ${LEVELS[i].edges.length}개</span>`;
+      b.setAttribute('aria-label',`스테이지 ${i+1}, 선 ${LEVELS[i].edges.length}개`+(done[i]?', 완성':''));
+      b.onclick=()=>{Sfx.unlock();load(i);if(matchMedia('(max-width:600px)').matches)scrollTo({top:0,behavior:'smooth'})};
+      g.appendChild(b);
+    }
+    sec.appendChild(g);box.appendChild(sec);
+  });
+}
+/* solver for hints: can the unused edges be drawn in one stroke starting from node c? */
+function finishable(c,used){
+  const memo=new Map();
+  const go=(c,mask)=>{
+    if(mask===(1<<L.edges.length)-1)return true;
+    const k=c+':'+mask;if(memo.has(k))return memo.get(k);
+    let ok=false;
+    for(let i=0;i<L.edges.length&&!ok;i++){if(mask&(1<<i))continue;const e=L.edges[i];if(e[0]!==c&&e[1]!==c)continue;ok=go(e[0]===c?e[1]:e[0],mask|(1<<i))}
+    memo.set(k,ok);return ok;
+  };
+  let m=0;used.forEach(i=>m|=1<<i);return{ok:go(c,m),go,m};
+}
+function nextEdgeFrom(c,used){
+  let m=0;used.forEach(i=>m|=1<<i);const f=finishable(c,used);
+  for(let i=0;i<L.edges.length;i++){if(m&(1<<i))continue;const e=L.edges[i];if(e[0]!==c&&e[1]!==c)continue;
+    const n=e[0]===c?e[1]:e[0];if(f.go(n,m|(1<<i)))return{edge:i,to:n}}
+  return null;
+}
+function showHint(){
+  Sfx.unlock();if(!$('#win').hidden)return;
+  if(!path.length){
+    for(let s=0;s<pts.length;s++)if(finishable(s,[]).ok){const nx=nextEdgeFrom(s,[]);hint={node:s,edge:nx.edge};msg('반짝이는 점에서 시작해서, 반짝이는 선을 따라가 보세요.');return}
+  }
+  const end=path[path.length-1];
+  if(finishable(end,usedOrder).ok){const nx=nextEdgeFrom(end,usedOrder);hint={node:end,edge:nx.edge};msg('반짝이는 선을 따라 그려 보세요.');return}
+  // count how many steps back are needed
+  for(let k=1;k<=usedOrder.length;k++){const u=usedOrder.slice(0,-k),p=path[path.length-1-k];if(finishable(p,u).ok){msg(`이 길로는 다 못 그려요. 되돌리기를 ${k}번 눌러 보세요.`);hint=null;return}}
+  msg('시작점부터 다시 그려 보세요. 다시를 눌러 보세요.');hint=null;
+}
+
+/* input */
+const toXY=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]};
+const nodeAt=([x,y],r)=>{let best=-1,bd=r*r;pts.forEach((p,i)=>{const d=(p[0]-x)**2+(p[1]-y)**2;if(d<bd){bd=d;best=i}});return best};
+cv.addEventListener('pointerdown',e=>{
+  Sfx.unlock();if(!$('#win').hidden)return;const p=toXY(e),n=nodeAt(p,30);
+  if(n<0)return;
+  if(!usedOrder.length){path=[n];Sfx.start();buzz(8)}
+  else if(n!==path[path.length-1]){Sfx.bad();msg('빛나는 끝점에서 이어서 그려요. 처음부터 하려면 다시를 누르세요.');return}
+  drawing=true;finger=p;hint=null;try{cv.setPointerCapture(e.pointerId)}catch(_){}
+  hud();
+});
+cv.addEventListener('pointermove',e=>{
+  if(!drawing)return;finger=toXY(e);
+  const n=nodeAt(finger,22),end=path[path.length-1];
+  if(n<0||n===end)return;
+  const i=edgeIdx(end,n);
+  if(path.length>=2&&n===path[path.length-2]&&usedOrder[usedOrder.length-1]===i){path.pop();usedOrder.pop();Sfx.undo();hud();return}
+  if(i>=0&&!isUsed(i)){path.push(n);usedOrder.push(i);Sfx.edge(usedOrder.length-1);buzz(6);hud();msg('');check()}
+});
+const endDraw=()=>{drawing=false;finger=null;
+  if(usedOrder.length&&usedOrder.length<L.edges.length){const end=path[path.length-1];
+    if(!L.edges.some((e,i)=>!isUsed(i)&&(e[0]===end||e[1]===end)))msg('여기서는 더 갈 선이 없어요. 되돌리기를 눌러 보세요.')}};
+cv.addEventListener('pointerup',endDraw);cv.addEventListener('pointercancel',endDraw);
+function check(){
+  if(usedOrder.length===L.edges.length){
+    drawing=false;finger=null;winT=performance.now();
+    const first=!done[lv];done[lv]=1;store.set('os_done',done);Sfx.win();buzz(60);
+    setTimeout(()=>{$('#winText').textContent=`선 ${L.edges.length}개를 한 번에!`+(first?'':' · 이미 깬 판');$('#winNext').hidden=lv>=STAGES-1;$('#win').hidden=false;map();hud()},900);
+  }
+}
+$('#bUndo').onclick=()=>{Sfx.unlock();if(!$('#win').hidden||!path.length)return;
+  if(usedOrder.length){usedOrder.pop();path.pop()}else path=[];Sfx.undo();hint=null;msg('');hud()};
+$('#bReset').onclick=()=>{Sfx.unlock();load(lv)};
+$('#bHint').onclick=showHint;
+$('#winRetry').onclick=()=>{Sfx.unlock();load(lv)};
+$('#winNext').onclick=()=>{Sfx.unlock();load(Math.min(STAGES-1,lv+1))};
+$('#devAll').onchange=e=>{devAll=e.target.checked;map()};
+const syncS=()=>{const b=$('#bSound');b.textContent=Sfx.on?'소리 켬':'소리 끔';b.classList.toggle('off',!Sfx.on);b.setAttribute('aria-pressed',String(Sfx.on))};
+$('#bSound').onclick=()=>{Sfx.unlock();Sfx.toggle();syncS();Sfx.start()};syncS();
+
+/* drawing */
+const hueAt=k=>190+k*(130/Math.max(1,L.edges.length-1));   // cyan → violet → pink along the stroke
+function frame(now){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const g=ctx.createRadialGradient(W/2,H*.9,20,W/2,H/2,H);g.addColorStop(0,'#121830');g.addColorStop(1,'#05070c');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(130,150,200,.08)';for(let x=18;x<W;x+=24)for(let y=18;y<H;y+=24)ctx.fillRect(x,y,1.5,1.5);
+  ctx.lineCap='round';
+  // unused edges
+  L.edges.forEach((e,i)=>{if(isUsed(i))return;const[a,b]=[pts[e[0]],pts[e[1]]];
+    const hi=hint&&hint.edge===i;ctx.save();ctx.strokeStyle=hi?`rgba(255,196,77,${.55+.45*Math.sin(now/180)})`:'#2b3552';ctx.lineWidth=hi?8:6;if(hi){ctx.shadowColor='#ffc44d';ctx.shadowBlur=16}
+    ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();ctx.restore()});
+  // drawn edges, in order
+  const wt=winT?(now-winT)/900:0;
+  usedOrder.forEach((i,k)=>{const e=L.edges[i],from=pts[path[k]],to=pts[path[k+1]];const h=hueAt(k);
+    const glow=winT&&wt<1.6?Math.max(0,1-Math.abs(wt*usedOrder.length-k)/3):0;
+    ctx.save();ctx.strokeStyle=`hsl(${h} 100% ${62+glow*25}%)`;ctx.shadowColor=`hsl(${h} 100% 60%)`;ctx.shadowBlur=14+glow*20;ctx.lineWidth=7+glow*3;
+    ctx.beginPath();ctx.moveTo(from[0],from[1]);ctx.lineTo(to[0],to[1]);ctx.stroke();ctx.restore()});
+  // finger rubber band
+  if(drawing&&finger&&path.length){const a=pts[path[path.length-1]];ctx.save();ctx.setLineDash([3,7]);ctx.strokeStyle='rgba(231,234,244,.5)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(finger[0],finger[1]);ctx.stroke();ctx.restore()}
+  // nodes
+  const end=path.length?path[path.length-1]:-1;
+  pts.forEach((p,i)=>{
+    const touched=path.includes(i),isEnd=i===end,hi=hint&&hint.node===i&&!usedOrder.length;
+    ctx.save();ctx.fillStyle=touched?'#1b1030':'#0d1220';ctx.strokeStyle=isEnd?'#ffffff':touched?'#ff8ad8':'#4a5578';ctx.lineWidth=2.5;
+    if(isEnd){ctx.shadowColor='#ff4fd2';ctx.shadowBlur=18}
+    ctx.beginPath();ctx.arc(p[0],p[1],10,0,7);ctx.fill();ctx.stroke();ctx.restore();
+    if(isEnd&&!winT){ctx.save();ctx.strokeStyle=`rgba(255,79,210,${.5+.5*Math.sin(now/200)})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(p[0],p[1],16+3*Math.sin(now/200),0,7);ctx.stroke();ctx.restore()}
+    if(hi){ctx.save();ctx.strokeStyle=`rgba(255,196,77,${.6+.4*Math.sin(now/180)})`;ctx.lineWidth=3;ctx.shadowColor='#ffc44d';ctx.shadowBlur=16;ctx.beginPath();ctx.arc(p[0],p[1],17,0,7);ctx.stroke();ctx.restore()}
+  });
+  requestAnimationFrame(frame);
+}
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+load(unlocked(last|0)&&last<STAGES?last|0:0);
+requestAnimationFrame(frame);
+</script>
+</html>

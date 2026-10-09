@@ -77,5 +77,16 @@ window.GAMES = [
     status: "play",
     meta: "무한 모드 · 정확 콤보",
     tags: ["아케이드", "우주"]
+  },
+  {
+    id: "one-stroke",
+    title: "한붓그리기",
+    desc: "모든 선을 한 번씩만 지나가게 손가락으로 그리는 퍼즐",
+    url: "one-stroke/index.html",
+    thumb: "one-stroke/thumb.svg",
+    color: "#ff4fd2",
+    status: "play",
+    meta: "30스테이지 · 3챕터",
+    tags: ["퍼즐", "드래그"]
   }
 ];

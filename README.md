@@ -11,6 +11,7 @@
 | 네온 스택 | 플레이 가능 | 위에서 떨어지는 블록을 타이밍 맞춰 쌓는 게임 (퍼펙트, 특수 블록, 층마다 바뀌는 하늘) |
 | 색 정렬 튜브 | 플레이 가능 | 튜브를 탭해서 색 구슬을 옮겨 한 가지 색씩 맞추는 퍼즐 (30스테이지) |
 | 궤도 점프 | 플레이 가능 | 행성을 도는 공을 탭 한 번으로 날려 다음 궤도에 올라타는 게임 (정확 콤보, 별, 움직이는 행성) |
+| 한붓그리기 | 플레이 가능 | 모든 선을 한 번씩만 지나가게 손가락으로 그리는 퍼즐 (30스테이지) |
 
 ## 새 게임 추가하기
 
@@ -21,3 +22,4 @@
 
 - `tools/gen-parking.js`: 주차장 탈출 스테이지 생성기. `node tools/gen-parking.js`로 `parking-escape/levels.js`를 다시 만들어요.
 - `tools/gen-color-sort.js`: 색 정렬 튜브 스테이지 생성기. `node tools/gen-color-sort.js`로 `color-sort/levels.js`를 다시 만들어요.
+- `tools/gen-one-stroke.js`: 한붓그리기 스테이지 생성기. `node tools/gen-one-stroke.js`로 `one-stroke/levels.js`를 다시 만들어요.
