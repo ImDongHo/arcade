@@ -64,6 +64,7 @@ details.card:not([open]){gap:0}
 .banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
 .banner .rec{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 14px rgba(67,240,255,.6)}
 .banner p{margin:0;font-family:var(--f-mono)}
+.hscore{display:none}
 .hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
@@ -86,6 +87,14 @@ details.card:not([open]){gap:0}
   .stats dd{font-size:17px}
   header .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
   header .btns .btn{padding:12px 0;font-size:15px}
+  /* score lives in the header on phones so it is visible without scrolling */
+  header{flex-wrap:nowrap;align-items:flex-end}
+  .hscore{display:grid;justify-items:end;line-height:1.1}
+  .hscore b{font:700 24px var(--f-mono);font-variant-numeric:tabular-nums;color:var(--fg)}
+  .hscore small{font:500 12px var(--f-mono);color:var(--muted)}
+  .hscore small span{color:var(--amber)}
+  /* keep the whole board on screen even in in-app browsers with a toolbar */
+  canvas{width:auto;max-width:100%;aspect-ratio:360/560;max-height:calc(100svh - 190px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
 }
 </style>
 
@@ -95,6 +104,7 @@ details.card:not([open]){gap:0}
       <a class="back" href="../index.html">&larr; arcade</a>
       <h1>네온 <span>버블</span></h1>
     </div>
+    <div class="hscore" aria-hidden="true"><b id="hS">0</b><small>최고 <span id="hB">0</span></small></div>
     <div class="btns">
       <button class="btn" id="bSound" aria-pressed="true">소리</button>
       <button class="btn" id="bVib" aria-pressed="true">진동</button>
@@ -272,7 +282,7 @@ function restore(sv){
   hud();
 }
 function hud(){
-  $('#sScore').textContent=score.toLocaleString();$('#sBest').textContent=best.toLocaleString();
+  $('#sScore').textContent=$('#hS').textContent=score.toLocaleString();$('#sBest').textContent=$('#hB').textContent=best.toLocaleString();
   $('#sCombo').textContent=combo>1?'x'+combo:'-';$('#sLeft').textContent=Math.max(0,level().limit-misses);
 }
 
