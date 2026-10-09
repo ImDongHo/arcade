@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>궤도 점프</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: one tall space canvas + score panel. Phone: board first, 4-up score row, buttons in a bottom bar. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --pink:#ff4fd2; --cyan:#43f0ff; --amber:#ffc44d; --red:#ff4b5e;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px}
+.title{display:grid;gap:2px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content}
+.back:hover{color:var(--fg)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:var(--cyan);text-shadow:0 0 18px rgba(67,240,255,.45)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;background:#05070c;border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;justify-content:center;min-width:0}
+canvas{display:block;width:100%;height:auto;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn.primary{background:var(--cyan);color:#041016;border-color:var(--cyan)}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.btn.armed{background:#0d3036;border-color:var(--cyan);color:#c9fbff}
+.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.banner{position:absolute;inset:12px;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.84);border-radius:10px}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
+.banner .rec{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 14px rgba(67,240,255,.6)}
+.banner p{margin:0;font-family:var(--f-mono)}
+.banner .time{display:block;margin-top:4px;font:500 13px var(--f-body);color:var(--muted)}
+.hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- phone layout: board first, compact score row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:10px}
+  .back{font-size:13px}
+  h1{font-size:24px}
+  .game{gap:10px}
+  .screen{padding:6px;border-radius:12px}
+  .banner{inset:6px}
+  .banner strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  header .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  header .btns .btn{padding:12px 0;font-size:15px}
+  /* keep the whole board on screen even in in-app browsers with a toolbar */
+  canvas{width:auto;max-width:100%;aspect-ratio:360/600;max-height:calc(100svh - 190px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="title">
+      <a class="back" href="../index.html">&larr; arcade</a>
+      <h1>궤도 <span>점프</span></h1>
+    </div>
+    <div class="btns">
+      <button class="btn" id="bSound" aria-pressed="true">소리</button>
+      <button class="btn" id="bVib" aria-pressed="true">진동</button>
+      <button class="btn" id="bRestart">다시 시작</button>
+    </div>
+  </header>
+
+  <section class="game">
+    <div class="screen" id="stage">
+      <canvas id="cv" aria-label="궤도 점프 게임 화면"></canvas>
+      <div class="banner" id="over" hidden>
+        <strong>우주 미아!</strong>
+        <div class="rec" id="rec" hidden>새 최고 기록!</div>
+        <p id="overText"></p>
+        <div><button class="btn primary" id="bAgain">다시 하기</button></div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>점수</h2>
+        <dl class="stats">
+          <div><dt>점수</dt><dd id="sScore">0</dd></div>
+          <div><dt>최고 점수</dt><dd id="sBest">0</dd></div>
+          <div><dt>별</dt><dd id="sStar">0</dd></div>
+          <div><dt>콤보</dt><dd id="sCombo">-</dd></div>
+        </dl>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>플레이 방법</h2></summary>
+        <ul class="how">
+          <li>하얀 공이 행성 궤도를 따라 돌아요. 궤도 위 작은 화살표가 도는 방향이에요.</li>
+          <li>화면을 탭하면 공이 그 순간 향하던 방향으로 똑바로 날아가요.</li>
+          <li>다음 행성의 궤도에 닿으면 붙잡혀요. 빗나가서 화면 밖으로 나가면 끝이에요.</li>
+          <li>행성 한가운데를 노리고 날아가면 "정확!" 보너스와 콤보가 쌓여요.</li>
+          <li>잘 노린 길 위에는 별이 떠 있어요. 먹으면 2점이에요.</li>
+          <li>올라갈수록 궤도가 작아지고 빨라져요. 12번째 행성부터는 움직이는 행성도 나와요.</li>
+        </ul>
+        <p class="note">아이폰은 무음 모드에서는 소리가 나지 않아요.</p>
+      </details>
+    </aside>
+  </section>
+</div>
+<input type="checkbox" switch id="hapticSw" class="hapsw" tabindex="-1" aria-hidden="true"><label for="hapticSw" id="hapticLab" class="hapsw" aria-hidden="true"></label>
+
+<script>
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const Sfx=(()=>{
+  let ac=null,out=null,on=store.get('oj_sound',true);
+  function unlock(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}
+  function tone(f,d,{type='sine',vol=.18,slide=0,delay=0}={}){if(!on||!ac||ac.state!=='running')return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03)}
+  const st=n=>Math.pow(2,n/12),SCALE=[0,2,4,7,9,12,14,16,19,21,24];
+  return{unlock,get on(){return on},toggle(){on=!on;store.set('oj_sound',on);return on},
+    jump(){tone(380,.14,{vol:.12,slide:2.2})},
+    land(){tone(220,.12,{type:'triangle',vol:.16,slide:1.4})},
+    perfect(c){const f=440*st(SCALE[Math.min(c-1,SCALE.length-1)]);tone(f,.2,{type:'triangle',vol:.16});tone(f*1.5,.16,{vol:.07,delay:.05})},
+    star(){tone(1320,.08,{vol:.1});tone(1760,.1,{vol:.08,delay:.06})},
+    over(){tone(500,.9,{vol:.14,slide:.2});[0,-3,-7].forEach((s,i)=>tone(262*st(s),.3,{type:'triangle',vol:.12,delay:.4+i*.15}))},
+    best(){[0,4,7,12,16].forEach((s,i)=>tone(523*st(s),.2,{vol:.13,delay:.3+i*.08}))}};
+})();
+/* haptics: Vibration API (Android) / switch-input trick (iOS 18+, only inside a tap) */
+const Haptic=(()=>{
+  let on=store.get('oj_vib',true);const lab=$('#hapticLab');
+  return{get on(){return on},toggle(){on=!on;store.set('oj_vib',on);return on},
+    tap(){if(!on)return;if(navigator.vibrate)navigator.vibrate(10);else if(lab)lab.click()},
+    bump(ms){if(on&&navigator.vibrate)navigator.vibrate(ms)}};
+})();
+const buzz=ms=>Haptic.bump(ms);
+
+/* world */
+const W=360,H=600,SPEED=.36,BALL=7;
+const cv=$('#cv'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);
+cv.width=W*dpr;cv.height=H*dpr;
+cv.style.maxWidth=W+'px';
+const PAL=['#43f0ff','#ff4fd2','#ffc44d','#5dffa0','#b38bff','#ff8a3d'];
+const BG=Array.from({length:120},(_,i)=>{const r=mulberry(i*977+3);return{x:r()*W,y:r()*H*2,s:.4+r()*1.4,d:.15+r()*.5,p:r()*7}});
+
+let planets,stars,ball,cur,score,playMs=0,best=store.get('oj_best',0),combo,maxCombo,starCount,state='ready',cam,camTo,trail,parts,floats,rings,shake,flash,tNow=0;
+let R=mulberry(Date.now()%1e9);
+
+function newPlanet(i,prev){
+  const lvl=i;
+  const orbit=Math.max(38,66-lvl*.7)+(R()-.5)*12;
+  const spin=(1.5+Math.min(1.6,lvl*.035)+R()*.6)*(R()<.5?-1:1);
+  let x=prev?prev.x+(R()<.5?-1:1)*(50+R()*90):W/2;
+  x=Math.max(orbit+14,Math.min(W-orbit-14,x));
+  const y=prev?prev.y-(170+R()*50+Math.min(40,lvl*1.2)):H*.68;
+  const moving=lvl>=12&&R()<Math.min(.55,.2+lvl*.012);
+  return{x,bx:x,y,R:orbit,core:orbit*.36,w:spin,c:PAL[i%PAL.length],mv:moving?{amp:Math.min(70,W/2-orbit-14),spd:.0006+R()*.0006,ph:R()*7}:null,i};
+}
+// the point on planet a's orbit whose tangent (in a's spin direction) points straight at b's core
+function perfectLaunch(a,b){
+  const sg=Math.sign(a.w);let best=null,bd=1e9;
+  for(let k=0;k<360;k++){const t=k*Math.PI/180,px=a.bx+Math.cos(t)*a.R,py=a.y+Math.sin(t)*a.R,ux=-Math.sin(t)*sg,uy=Math.cos(t)*sg,dx=b.bx-px,dy=b.y-py;
+    if(ux*dx+uy*dy<=0)continue;const perp=Math.abs(ux*dy-uy*dx);if(perp<bd){bd=perp;best=[px,py]}}
+  return best||[a.bx,a.y];
+}
+function ensure(){
+  while(planets[planets.length-1].y>cam-H){const p=newPlanet(planets.length,planets[planets.length-1]);planets.push(p);
+    if(planets.length>2&&R()<.55){const a=planets[planets.length-2],L=perfectLaunch(a,p);stars.push({x:L[0]+(p.x-L[0])*.45,y:L[1]+(p.y-L[1])*.45,got:false})}}
+}
+function reset(){
+  R=mulberry(Date.now()%1e9);
+  planets=[newPlanet(0,null)];stars=[];cur=0;cam=planets[0].y-H*.68;camTo=cam;
+  ensure();
+  ball={mode:'orbit',a:-Math.PI/2,x:0,y:0,vx:0,vy:0,t:0,lx:0,ly:0};
+  score=0;playMs=0;combo=0;maxCombo=0;starCount=0;trail=[];parts=[];floats=[];rings=[];shake=0;flash=0;
+  $('#over').hidden=true;disarm();hud();
+}
+function planetPos(p){if(p.mv)p.x=p.bx+Math.sin(tNow*p.mv.spd+p.mv.ph)*p.mv.amp;}
+function jump(){
+  if(state==='ready'){state='play';return}
+  if(state!=='play'||ball.mode!=='orbit')return;
+  const p=planets[cur],s=Math.sign(p.w);
+  // tangent of the orbit; a moving planet also carries its sideways drift
+  let vx=-Math.sin(ball.a)*s,vy=Math.cos(ball.a)*s;
+  const drift=p.mv?Math.cos(tNow*p.mv.spd+p.mv.ph)*p.mv.amp*p.mv.spd:0;
+  vx=vx*SPEED+drift;vy=vy*SPEED;
+  ball={mode:'fly',x:ball.x,y:ball.y,vx,vy,t:0,lx:ball.x,ly:ball.y,a:ball.a};
+  Sfx.jump();buzz(10);
+}
+function capture(j){
+  const p=planets[j],now=performance.now();
+  // how close the flight line passed to the core: aimed at the middle = perfect
+  const len=Math.hypot(ball.vx,ball.vy),ux=ball.vx/len,uy=ball.vy/len,dx=p.x-ball.lx,dy=p.y-ball.ly,perp=Math.abs(ux*dy-uy*dx);
+  const perfect=perp<p.R*.32;
+  cur=j;ball={mode:'orbit',a:Math.atan2(ball.y-p.y,ball.x-p.x),x:ball.x,y:ball.y};
+  let gain=1;
+  if(perfect){combo++;maxCombo=Math.max(maxCombo,combo);gain+=1+Math.floor(combo/3);Sfx.perfect(combo);flash=.08;
+    floats.push({x:p.x,y:p.y-p.R-14,t:combo>1?`정확! x${combo}`:'정확!',c:'#ffc44d',t0:now,s:15+Math.min(combo,6)})}
+  else{combo=0;Sfx.land()}
+  score+=gain;floats.push({x:p.x,y:p.y,t:'+'+gain,c:p.c,t0:now,s:18});
+  rings.push({x:p.x,y:p.y,r:p.R,c:p.c,t0:now});
+  for(let k=0;k<14;k++){const a=Math.PI*2*k/14;parts.push({x:ball.x,y:ball.y,vx:Math.cos(a)*.12,vy:Math.sin(a)*.12,c:p.c,t0:now,life:420})}
+  buzz(perfect?25:12);shake=perfect?4:2;
+  camTo=p.y-H*.68;ensure();hud();
+}
+function gameOver(){
+  state='over';const rec=score>best;
+  if(rec){best=score;store.set('oj_best',best);Sfx.best()}
+  Sfx.over();buzz(120);
+  $('#rec').hidden=!rec;const sec=Math.round(playMs/1000),m=Math.floor(sec/60),ss=sec%60;
+  $('#overText').innerHTML=`점수 ${score} · 별 ${starCount}개`+(maxCombo>1?` · 최대 콤보 x${maxCombo}`:'')+`<span class="time">${m?m+'분 ':''}${ss}초 동안 우주 여행</span>`;
+  hud();
+  setTimeout(()=>{if(state==='over')$('#over').hidden=false},700);
+}
+
+function hud(){$('#sScore').textContent=score;$('#sBest').textContent=best;$('#sStar').textContent=starCount;$('#sCombo').textContent=combo>1?'x'+combo:'-'}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();Sfx.unlock();if(state==='play'&&ball.mode==='orbit')Haptic.tap();jump()});
+{const sc=$('.screen');let last=0;
+ sc.addEventListener('touchend',e=>{if(e.timeStamp-last<400)e.preventDefault();last=e.timeStamp},{passive:false});
+ sc.addEventListener('dblclick',e=>e.preventDefault());
+ ['gesturestart','gesturechange'].forEach(n=>sc.addEventListener(n,e=>e.preventDefault()));}
+$('#bAgain').onclick=()=>{Sfx.unlock();reset();state='play'};
+// restart needs a second tap within 2.5s so a stray tap never ends a good run
+let armT=0,armTimer=0;
+function disarm(){armT=0;clearTimeout(armTimer);const b=$('#bRestart');b.textContent='다시 시작';b.classList.remove('armed')}
+$('#bRestart').onclick=()=>{
+  Sfx.unlock();
+  if(state!=='play'||score<3||armT){reset();state='play';return}
+  armT=1;const b=$('#bRestart');b.textContent='한 번 더 누르면 재시작';b.classList.add('armed');armTimer=setTimeout(disarm,2500);
+};
+function syncToggles(){
+  const s=$('#bSound'),v=$('#bVib');
+  s.textContent=Sfx.on?'소리 켬':'소리 끔';s.classList.toggle('off',!Sfx.on);s.setAttribute('aria-pressed',String(Sfx.on));
+  v.textContent=Haptic.on?'진동 켬':'진동 끔';v.classList.toggle('off',!Haptic.on);v.setAttribute('aria-pressed',String(Haptic.on));
+}
+$('#bSound').onclick=()=>{Sfx.unlock();Sfx.toggle();syncToggles();Sfx.land()};
+$('#bVib').onclick=()=>{Haptic.toggle();syncToggles();Haptic.tap()};
+syncToggles();
+
+/* loop */
+let lastT=performance.now();
+function step(dt){
+  tNow+=dt;if(state==='play')playMs+=dt;
+  for(const p of planets)planetPos(p);
+  if(ball.mode==='orbit'){
+    const p=planets[cur];if(state!=='over')ball.a+=p.w*dt/1000;
+    ball.x=p.x+Math.cos(ball.a)*p.R;ball.y=p.y+Math.sin(ball.a)*p.R;
+  }else if(ball.mode==='fly'){
+    const n=Math.ceil(dt/4);
+    for(let k=0;k<n&&ball.mode==='fly';k++){
+      const h=dt/n;ball.x+=ball.vx*h;ball.y+=ball.vy*h;ball.t+=h;
+      for(const s of stars)if(!s.got&&Math.hypot(s.x-ball.x,s.y-ball.y)<24){s.got=true;starCount++;score+=2;Sfx.star();hud();floats.push({x:s.x,y:s.y-10,t:'★ +2',c:'#ffc44d',t0:performance.now(),s:16})}
+      for(let j=cur+1;j<planets.length;j++){const p=planets[j];if(Math.hypot(p.x-ball.x,p.y-ball.y)<=p.R+5){capture(j);break}}
+    }
+    if(ball.mode==='fly'&&state==='play'){
+      const sy=ball.y-cam;
+      if(ball.x<-40||ball.x>W+40||sy<-60||sy>H+60||ball.t>3200){ball.mode='lost';gameOver()}
+    }
+  }else if(ball.mode==='lost'){ball.x+=ball.vx*dt;ball.y+=ball.vy*dt}
+}
+function frame(now){
+  const dt=Math.min(40,now-lastT);lastT=now;
+  if(state!=='ready')step(dt);else{for(const p of planets)planetPos(p);const p=planets[cur];ball.a+=p.w*dt/1000;ball.x=p.x+Math.cos(ball.a)*p.R;ball.y=p.y+Math.sin(ball.a)*p.R}
+  cam+=(camTo-cam)*Math.min(1,dt*.006);
+  if(ball.mode!=='orbit'){trail.push([ball.x,ball.y]);if(trail.length>18)trail.shift()}else if(trail.length)trail.shift();
+  const sx=shake?(Math.random()-.5)*shake:0;shake=Math.max(0,shake-dt*.02);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#04050c');g.addColorStop(1,'#0c0f22');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // parallax stars
+  for(const s of BG){const y=((s.y-cam*s.d)%(H*2)+H*2)%(H*2)-H*.5;if(y<-2||y>H+2)continue;ctx.globalAlpha=.3+.5*Math.abs(Math.sin(now/1100+s.p));ctx.fillStyle='#e7eaf4';ctx.fillRect(s.x,y,s.s,s.s)}
+  ctx.globalAlpha=1;
+  ctx.translate(sx,-cam);
+  // planets
+  for(const p of planets){
+    if(p.y-cam<-p.R-40||p.y-cam>H+p.R+40)continue;
+    const active=p.i===cur,next=p.i===cur+1;
+    ctx.save();ctx.strokeStyle=p.c;ctx.globalAlpha=active?.9:next?.75:.3;ctx.lineWidth=active?2.2:1.6;
+    if(!active)ctx.setLineDash([5,7]);ctx.lineDashOffset=-now*.01*Math.sign(p.w);
+    ctx.beginPath();ctx.arc(p.x,p.y,p.R,0,7);ctx.stroke();ctx.restore();
+    // spin arrow on the ring
+    ctx.save();ctx.globalAlpha=active||next?.8:.3;ctx.fillStyle=p.c;const aa=now/1000*p.w;const ax=p.x+Math.cos(aa)*p.R,ay=p.y+Math.sin(aa)*p.R;
+    ctx.translate(ax,ay);ctx.rotate(aa+(p.w>0?Math.PI/2:-Math.PI/2));ctx.beginPath();ctx.moveTo(5,0);ctx.lineTo(-4,-4);ctx.lineTo(-4,4);ctx.closePath();ctx.fill();ctx.restore();
+    const cg=ctx.createRadialGradient(p.x-p.core*.35,p.y-p.core*.35,1,p.x,p.y,p.core);cg.addColorStop(0,'#ffffff');cg.addColorStop(.25,p.c);cg.addColorStop(1,'#0b0f19');
+    ctx.save();ctx.shadowColor=p.c;ctx.shadowBlur=18;ctx.fillStyle=cg;ctx.beginPath();ctx.arc(p.x,p.y,p.core,0,7);ctx.fill();ctx.restore();
+    if(p.mv&&p.y-cam>0){ctx.save();ctx.globalAlpha=.35;ctx.strokeStyle=p.c;ctx.setLineDash([2,6]);ctx.beginPath();ctx.moveTo(p.bx-p.mv.amp,p.y);ctx.lineTo(p.bx+p.mv.amp,p.y);ctx.stroke();ctx.restore()}
+  }
+  // stars
+  for(const s of stars){if(s.got)continue;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(now/900);ctx.fillStyle='#ffc44d';ctx.shadowColor='#ffc44d';ctx.shadowBlur=12;ctx.beginPath();
+    for(let k=0;k<10;k++){const r=k%2?4:9,a=k*Math.PI/5-Math.PI/2;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}ctx.closePath();ctx.fill();ctx.restore()}
+  // trail + ball
+  for(let k=0;k<trail.length;k++){const[t1,t2]=trail[k];ctx.globalAlpha=k/trail.length*.5;ctx.fillStyle='#e7eaf4';ctx.beginPath();ctx.arc(t1,t2,BALL*(k/trail.length),0,7);ctx.fill()}
+  ctx.globalAlpha=1;
+  if(ball.mode!=='lost'||state==='over'){ctx.save();ctx.shadowColor='#ffffff';ctx.shadowBlur=16;ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(ball.x,ball.y,BALL,0,7);ctx.fill();ctx.restore()}
+  rings=rings.filter(f=>{const t=(now-f.t0)/450;if(t>=1)return false;ctx.save();ctx.globalAlpha=1-t;ctx.strokeStyle=f.c;ctx.lineWidth=3*(1-t)+1;ctx.shadowColor=f.c;ctx.shadowBlur=16;ctx.beginPath();ctx.arc(f.x,f.y,f.r*(1+t*.35),0,7);ctx.stroke();ctx.restore();return true});
+  parts=parts.filter(p=>{const t=(now-p.t0)/p.life;if(t>=1)return false;p.x+=p.vx*dt;p.y+=p.vy*dt;ctx.globalAlpha=1-t;ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,2.5,2.5);ctx.globalAlpha=1;return true});
+  floats=floats.filter(f=>{const t=(now-f.t0)/900;if(t>=1)return false;ctx.save();ctx.globalAlpha=t<.6?1:1-(t-.6)/.4;ctx.fillStyle=f.c;ctx.shadowColor=f.c;ctx.shadowBlur=10;ctx.font=`700 ${f.s}px "JetBrains Mono","Black Han Sans",monospace`;ctx.textAlign='center';ctx.fillText(f.t,f.x,f.y-t*24);ctx.restore();return true});
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  if(flash>0){ctx.fillStyle=`rgba(255,255,255,${flash})`;ctx.fillRect(0,0,W,H);flash=Math.max(0,flash-dt*.0008)}
+  // HUD (on a soft dark band so passing planets never hide the score)
+  {const hg=ctx.createLinearGradient(0,0,0,110);hg.addColorStop(0,'rgba(4,5,12,.85)');hg.addColorStop(1,'rgba(4,5,12,0)');ctx.fillStyle=hg;ctx.fillRect(0,0,W,110)}
+  ctx.textAlign='center';ctx.fillStyle='#e7eaf4';ctx.shadowColor='#43f0ff';ctx.shadowBlur=12;ctx.font='700 48px "JetBrains Mono",monospace';ctx.fillText(score,W/2,62);ctx.shadowBlur=0;
+  ctx.font='500 12px "JetBrains Mono","IBM Plex Sans KR",monospace';ctx.fillStyle='#8b93ad';ctx.fillText(`최고 ${best} · ★ ${starCount}`+(combo>1?` · 콤보 x${combo}`:''),W/2,84);
+  if(state==='ready'){ctx.fillStyle=`rgba(67,240,255,${.6+.4*Math.sin(now/300)})`;ctx.font='600 18px "IBM Plex Sans KR",sans-serif';ctx.fillText('탭해서 시작',W/2,H*.38);
+    ctx.fillStyle='#8b93ad';ctx.font='500 13px "IBM Plex Sans KR",sans-serif';ctx.fillText('공이 도는 방향으로 날아가요. 다음 궤도에 닿으면 붙잡혀요',W/2,H*.38+26)}
+  requestAnimationFrame(frame);
+}
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+reset();requestAnimationFrame(frame);
+</script>
+</html>

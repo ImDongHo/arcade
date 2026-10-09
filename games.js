@@ -66,5 +66,16 @@ window.GAMES = [
     status: "play",
     meta: "30스테이지 · 3챕터",
     tags: ["퍼즐", "최소 수 검증"]
+  },
+  {
+    id: "orbit-jump",
+    title: "궤도 점프",
+    desc: "행성을 도는 공을 탭 한 번으로 날려 다음 궤도에 올라타는 게임",
+    url: "orbit-jump/index.html",
+    thumb: "orbit-jump/thumb.svg",
+    color: "#43f0ff",
+    status: "play",
+    meta: "무한 모드 · 정확 콤보",
+    tags: ["아케이드", "우주"]
   }
 ];
