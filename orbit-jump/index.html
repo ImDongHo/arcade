@@ -173,7 +173,7 @@ const buzz=ms=>Haptic.bump(ms);
 const W=360,H=600,SPEED=.36,BALL=7;
 const cv=$('#cv'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);
 cv.width=W*dpr;cv.height=H*dpr;
-cv.style.maxWidth=W+'px';
+cv.style.maxWidth=`min(100%, ${W}px)`;
 const PAL=['#43f0ff','#ff4fd2','#ffc44d','#5dffa0','#b38bff','#ff8a3d'];
 const BG=Array.from({length:120},(_,i)=>{const r=mulberry(i*977+3);return{x:r()*W,y:r()*H*2,s:.4+r()*1.4,d:.15+r()*.5,p:r()*7}});
 

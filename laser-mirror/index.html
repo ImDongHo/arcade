@@ -304,7 +304,7 @@ const $=q=>document.querySelector(q);
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const dpr=Math.min(2,window.devicePixelRatio||1);
 const C=60,P=18,S=N*C+P*2;
-const cv=$('#cv');cv.width=S*dpr;cv.height=S*dpr;cv.style.maxWidth=S+'px';
+const cv=$('#cv');cv.width=S*dpr;cv.height=S*dpr;cv.style.maxWidth=`min(100%, ${S}px)`;
 const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
 

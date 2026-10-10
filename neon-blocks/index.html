@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>네온 블록 채우기</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: one 8x8 neon board with its piece tray + score panel. Phone: board first, 4-up score row, buttons in a bottom bar. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --pink:#ff4fd2; --cyan:#43f0ff; --amber:#ffc44d; --red:#ff4b5e;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px}
+.title{display:grid;gap:2px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content}
+.back:hover{color:var(--fg)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:var(--cyan);text-shadow:0 0 18px rgba(67,240,255,.45)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;background:#05070c;border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;justify-content:center;min-width:0}
+canvas{display:block;width:100%;height:auto;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn.primary{background:var(--cyan);color:#041016;border-color:var(--cyan)}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.btn.armed{background:#0d3036;border-color:var(--cyan);color:#c9fbff}
+.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.banner{position:absolute;inset:12px;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.84);border-radius:10px}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
+.banner .rec{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 14px rgba(67,240,255,.6)}
+.banner p{margin:0;font-family:var(--f-mono)}
+.banner .time{display:block;margin-top:4px;font:500 13px var(--f-body);color:var(--muted)}
+.hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- phone layout: board first, compact score row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:10px}
+  .back{font-size:13px}
+  h1{font-size:24px}
+  .game{gap:10px}
+  .screen{padding:6px;border-radius:12px}
+  .banner{inset:6px}
+  .banner strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  header .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  header .btns .btn{padding:12px 0;font-size:15px}
+  /* keep the whole board on screen even in in-app browsers with a toolbar */
+  canvas{width:auto;max-width:100%;aspect-ratio:360/484;max-height:calc(100svh - 190px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="title">
+      <a class="back" href="../index.html">&larr; arcade</a>
+      <h1>네온 <span>블록 채우기</span></h1>
+    </div>
+    <div class="btns">
+      <button class="btn" id="bUndo" disabled>되돌리기</button>
+      <button class="btn" id="bNew">새 게임</button>
+      <button class="btn" id="bSound" aria-pressed="true">소리</button>
+      <button class="btn" id="bVib" aria-pressed="true">진동</button>
+    </div>
+  </header>
+
+  <section class="game">
+    <div class="screen">
+      <canvas id="cv" aria-label="블록 채우기 판"></canvas>
+      <div class="banner" id="over" hidden>
+        <strong>더 놓을 곳이 없어요</strong>
+        <div class="rec" id="rec" hidden>새 최고 기록!</div>
+        <p id="overText"></p>
+        <div><button class="btn" id="bOverUndo">되돌리기</button> <button class="btn primary" id="bAgain">새 게임</button></div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>점수</h2>
+        <dl class="stats">
+          <div><dt>점수</dt><dd id="sScore">0</dd></div>
+          <div><dt>최고 점수</dt><dd id="sBest">0</dd></div>
+          <div><dt>지운 줄</dt><dd id="sLines">0</dd></div>
+          <div><dt>되돌리기</dt><dd id="sUndo">3</dd></div>
+        </dl>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>플레이 방법</h2></summary>
+        <ul class="how">
+          <li>아래 조각 3개를 끌어다 판에 놓아요. 조각은 손가락보다 조금 위에 떠서 따라와요.</li>
+          <li>가로나 세로 한 줄이 꽉 차면 사라져요. 놓기 전에 지워질 줄이 밝게 보여요.</li>
+          <li>칸 하나 1점, 한 줄 10점, 여러 줄을 한꺼번에 지우면 훨씬 커요(2줄 40점, 3줄 90점). 연달아 지우면 콤보 보너스.</li>
+          <li>되돌리기 3번으로 시작하고 10줄마다 1번씩 생겨요(최대 5번). 지금 놓을 수 없는 조각은 회색이에요.</li>
+          <li>놓을 곳이 없으면 끝나요. 앱을 닫아도 하던 판은 저장돼요.</li>
+        </ul>
+        <p class="note">아이폰은 무음 모드에서는 소리가 나지 않아요.</p>
+      </details>
+    </aside>
+  </section>
+</div>
+<input type="checkbox" switch id="hapticSw" class="hapsw" tabindex="-1" aria-hidden="true"><label for="hapticSw" id="hapticLab" class="hapsw" aria-hidden="true"></label>
+
+<script>
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const Sfx=(()=>{
+  let ac=null,out=null,on=store.get('nb_sound',true);
+  function unlock(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}
+  function tone(f,d,{type='sine',vol=.18,slide=0,delay=0}={}){if(!on||!ac||ac.state!=='running')return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03)}
+  const st=n=>Math.pow(2,n/12),SC=[0,2,4,7,9,12,14,16,19];
+  return{unlock,get on(){return on},toggle(){on=!on;store.set('nb_sound',on);return on},
+    pick(){tone(440,.05,{type:'triangle',vol:.08})},
+    place(){tone(220,.08,{type:'triangle',vol:.16,slide:.7})},
+    clear(n,combo){for(let i=0;i<n;i++)tone(392*st(SC[Math.min(combo+i,8)]),.22,{type:'triangle',vol:.14,delay:i*.07})},
+    bad(){tone(150,.1,{type:'square',vol:.05})},
+    undo(){tone(440,.1,{vol:.1,slide:.6})},
+    over(){[0,-3,-7,-12].forEach((s,i)=>tone(330*st(s),.3,{type:'triangle',vol:.15,delay:i*.14}))}};
+})();
+/* haptics: Vibration API (Android) / switch-input trick (iOS 18+, only inside a tap) */
+const Haptic=(()=>{
+  let on=store.get('nb_vib',true);const lab=$('#hapticLab');
+  return{get on(){return on},toggle(){on=!on;store.set('nb_vib',on);return on},
+    tap(){if(!on)return;if(navigator.vibrate)navigator.vibrate(10);else if(lab)lab.click()},
+    bump(ms){if(on&&navigator.vibrate)navigator.vibrate(ms)}};
+})();
+const buzz=ms=>Haptic.bump(ms);
+
+/* pieces: lists of [row,col]; weights keep big awkward ones rarer */
+const SHAPES=[
+  {c:[[0,0]],w:2},{c:[[0,0],[0,1]],w:3},{c:[[0,0],[1,0]],w:3},
+  {c:[[0,0],[0,1],[0,2]],w:3},{c:[[0,0],[1,0],[2,0]],w:3},
+  {c:[[0,0],[0,1],[0,2],[0,3]],w:2},{c:[[0,0],[1,0],[2,0],[3,0]],w:2},
+  {c:[[0,0],[0,1],[0,2],[0,3],[0,4]],w:1},{c:[[0,0],[1,0],[2,0],[3,0],[4,0]],w:1},
+  {c:[[0,0],[0,1],[1,0],[1,1]],w:3},{c:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]],w:1},
+  {c:[[0,0],[1,0],[1,1]],w:2},{c:[[0,1],[1,0],[1,1]],w:2},{c:[[0,0],[0,1],[1,0]],w:2},{c:[[0,0],[0,1],[1,1]],w:2},
+  {c:[[0,0],[1,0],[2,0],[2,1]],w:2},{c:[[0,1],[1,1],[2,1],[2,0]],w:2},{c:[[0,0],[0,1],[0,2],[1,0]],w:2},{c:[[0,0],[0,1],[0,2],[1,2]],w:2},
+  {c:[[0,0],[0,1],[0,2],[1,1]],w:2},{c:[[0,1],[1,0],[1,1],[1,2]],w:2},
+  {c:[[0,0],[0,1],[1,1],[1,2]],w:1},{c:[[0,1],[0,2],[1,0],[1,1]],w:1},
+  {c:[[0,0],[1,0],[2,0],[2,1],[2,2]],w:1},{c:[[0,0],[0,1],[0,2],[1,0],[2,0]],w:1},
+];
+const COLORS=['#43f0ff','#ff4fd2','#ffc44d','#5dffa0','#b38bff','#ff8a3d'];
+const N=8,W=360,CELL=40,BX=20,BY=16,TRAY_Y=BY+N*CELL+18,H=TRAY_Y+130;
+const cv=$('#cv'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);
+cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=`min(100%, ${W}px)`;
+
+let board,tray,score,best=store.get('nb_best',0),lines,undos,combo,hist,over,drag=null,flashes=[],parts=[],floats=[],playMs=0,moves=0;
+
+function rndShape(){let t=Math.random()*SHAPES.reduce((s,x)=>s+x.w,0);for(const s of SHAPES){t-=s.w;if(t<=0)return s}return SHAPES[0]}
+function fits(cells,r,c,b=board){return cells.every(([dr,dc])=>{const R=r+dr,C=c+dc;return R>=0&&C>=0&&R<N&&C<N&&!b[R][C]})}
+function anyFit(cells,b=board){for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(fits(cells,r,c,b))return true;return false}
+function deal(){
+  // never hand out a set where nothing at all can be placed
+  for(let t=0;t<30;t++){const set=[0,1,2].map(()=>{const s=rndShape();return{cells:s.c,color:COLORS[Math.floor(Math.random()*COLORS.length)]}});if(set.some(p=>anyFit(p.cells))||t===29)return set}
+}
+function newGame(){board=Array.from({length:N},()=>Array(N).fill(null));score=0;lines=0;undos=3;combo=0;hist=null;over=false;playMs=0;moves=0;tray=deal();$('#over').hidden=true;disarm();hud();save()}
+function save(){store.set('nb_save',over?null:{board,tray,score,lines,undos,combo,playMs,moves})}
+function restore(sv){({board,tray,score,lines,undos,combo}=sv);playMs=sv.playMs||0;moves=sv.moves||0;over=false;hud()}
+function hud(){$('#sScore').textContent=score.toLocaleString();$('#sBest').textContent=best.toLocaleString();$('#sLines').textContent=lines;$('#sUndo').textContent=undos;$('#bUndo').disabled=!hist||!undos;$('#bOverUndo').disabled=!hist||!undos}
+
+/* geometry for the tray: three slots, pieces drawn small and centred */
+const SLOT_W=W/3,TCELL=20;
+function bbox(cells){const rs=cells.map(c=>c[0]),cs=cells.map(c=>c[1]);return{h:Math.max(...rs)+1,w:Math.max(...cs)+1}}
+function slotOrigin(i,cells,cs=TCELL){const b=bbox(cells);return[SLOT_W*i+SLOT_W/2-b.w*cs/2,TRAY_Y+56-b.h*cs/2]}
+
+/* input: grab a piece from the tray, drag it (it floats above the finger so it stays visible), drop on the board */
+const LIFT=70;
+const toXY=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]};
+function dropCell(){if(!drag)return null;const b=bbox(drag.p.cells);const x=drag.x-b.w*CELL/2,y=drag.y-LIFT-b.h*CELL/2;return[Math.round((y-BY)/CELL),Math.round((x-BX)/CELL)]}
+cv.addEventListener('pointerdown',e=>{
+  Sfx.unlock();if(over)return;const[x,y]=toXY(e);if(y<TRAY_Y-10)return;
+  const i=Math.min(2,Math.floor(x/SLOT_W));if(!tray[i])return;
+  drag={i,p:tray[i],x,y};Sfx.pick();try{cv.setPointerCapture(e.pointerId)}catch(_){}
+});
+cv.addEventListener('pointermove',e=>{if(drag){[drag.x,drag.y]=toXY(e)}});
+cv.addEventListener('pointerup',()=>{
+  if(!drag)return;const d=drag;drag=null;const cell=(()=>{drag=d;const c=dropCell();drag=null;return c})();
+  if(cell&&fits(d.p.cells,cell[0],cell[1])){Haptic.tap();place(d.i,cell[0],cell[1])}else if(d.y<TRAY_Y-10){Sfx.bad()}
+});
+cv.addEventListener('pointercancel',()=>{drag=null});
+
+function place(i,r,c){
+  hist={board:board.map(row=>row.slice()),tray:tray.slice(),score,lines,combo};
+  const p=tray[i];p.cells.forEach(([dr,dc])=>board[r+dr][c+dc]=p.color);
+  tray[i]=null;moves++;score+=p.cells.length;Sfx.place();buzz(10);
+  // find full rows and columns, clear them together
+  const rows=[],cols=[];for(let k=0;k<N;k++){if(board[k].every(Boolean))rows.push(k);if(board.every(row=>row[k]))cols.push(k)}
+  const n=rows.length+cols.length,now=performance.now();
+  if(n){
+    combo++;const gain=n*10*n+(combo>1?(combo-1)*10:0);score+=gain;lines+=n;
+    rows.forEach(k=>{for(let cc=0;cc<N;cc++){burst(k,cc,board[k][cc],now);}flashes.push({row:k,t0:now})});
+    cols.forEach(k=>{for(let rr=0;rr<N;rr++){if(board[rr][k])burst(rr,k,board[rr][k],now)}flashes.push({col:k,t0:now})});
+    rows.forEach(k=>board[k].fill(null));cols.forEach(k=>board.forEach(row=>row[k]=null));
+    floats.push({x:Math.min(W-40,Math.max(40,BX+(c+1)*CELL)),y:Math.max(BY+34,BY+r*CELL),t:'+'+gain,c:'#ffc44d',t0:now,s:18+Math.min(n,4)*3});
+    if(n>=2)floats.push({x:W/2,y:BY+N*CELL/2,t:n>=4?'대단해요!':n===3?'트리플!':'더블!',c:'#43f0ff',t0:now,s:28});
+    if(combo>1)floats.push({x:W/2,y:BY+N*CELL/2+34,t:`콤보 x${combo}`,c:'#ff4fd2',t0:now+120,s:20});
+    Sfx.clear(n,combo-1);buzz(n>1?50:25);
+    // every 10 cleared lines gives back one undo
+    if(Math.floor(lines/10)>Math.floor(hist.lines/10)&&undos<5){undos++}
+  }else combo=0;
+  if(tray.every(t=>!t))tray=deal();
+  if(score>best){best=score;store.set('nb_best',best)}
+  hud();save();
+  if(!tray.some(t=>t&&anyFit(t.cells)))setTimeout(gameOver,450);
+}
+function burst(r,c,color,now){for(let k=0;k<4;k++){const a=Math.random()*7,v=.04+Math.random()*.12;parts.push({x:BX+c*CELL+CELL/2,y:BY+r*CELL+CELL/2,vx:Math.cos(a)*v,vy:Math.sin(a)*v-.05,c:color||'#fff',t0:now,life:500})}}
+function gameOver(){
+  if(tray.some(t=>t&&anyFit(t.cells)))return;
+  over=true;const rec=score>=best&&score>0;Sfx.over();buzz(80);
+  const sec=Math.max(1,Math.round(playMs/1000)),m=Math.floor(sec/60);
+  $('#rec').hidden=!rec;$('#overText').innerHTML=`점수 ${score.toLocaleString()} · ${lines}줄<span class="time">${((m?m+'분 ':'')+(sec%60||!m?sec%60+'초':'')).trim()} 동안 플레이</span>`;
+  $('#over').hidden=false;hud();store.set('nb_save',null);
+}
+function undo(){
+  Sfx.unlock();if(!hist||!undos)return;
+  ({board,tray,score,lines,combo}=hist);hist=null;undos--;over=false;$('#over').hidden=true;Sfx.undo();hud();save();
+}
+$('#bUndo').onclick=undo;$('#bOverUndo').onclick=undo;
+$('#bAgain').onclick=()=>{Sfx.unlock();newGame()};
+let armT=0,armTimer=0;
+function disarm(){armT=0;clearTimeout(armTimer);const b=$('#bNew');b.textContent='새 게임';b.classList.remove('armed')}
+$('#bNew').onclick=()=>{Sfx.unlock();if(over||moves<4||armT){newGame();return}armT=1;const b=$('#bNew');b.textContent='한 번 더 누르면 새 게임';b.classList.add('armed');armTimer=setTimeout(disarm,2500)};
+const _how=()=>{floats.push({x:W/2,y:BY+N*CELL/2-20,t:'칸 1개 = 1점',c:'#e7eaf4',t0:performance.now(),s:16,life:2200});floats.push({x:W/2,y:BY+N*CELL/2+6,t:'한 줄 10점 · 여러 줄 한꺼번에 크게!',c:'#ffc44d',t0:performance.now(),s:15,life:2200});floats.push({x:W/2,y:BY+N*CELL/2+32,t:'연달아 지우면 콤보 보너스',c:'#ff4fd2',t0:performance.now(),s:15,life:2200})};
+function syncToggles(){
+  const s=$('#bSound'),v=$('#bVib');
+  s.textContent=Sfx.on?'소리 켬':'소리 끔';s.classList.toggle('off',!Sfx.on);s.setAttribute('aria-pressed',String(Sfx.on));
+  v.textContent=Haptic.on?'진동 켬':'진동 끔';v.classList.toggle('off',!Haptic.on);v.setAttribute('aria-pressed',String(Haptic.on));
+}
+$('#bSound').onclick=()=>{Sfx.unlock();Sfx.toggle();syncToggles();Sfx.pick()};
+$('#bVib').onclick=()=>{Haptic.toggle();syncToggles();Haptic.tap()};
+syncToggles();
+
+/* drawing */
+function block(x,y,s,color,a=1){
+  ctx.save();ctx.globalAlpha=a;ctx.shadowColor=color;ctx.shadowBlur=s*.3;
+  ctx.fillStyle=color+'33';ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(x+2,y+2,s-4,s-4,s*.16);ctx.fill();ctx.stroke();
+  ctx.shadowBlur=0;ctx.fillStyle=color+'55';ctx.fillRect(x+5,y+5,s-10,s*.14);ctx.restore();
+}
+let lastT=performance.now();
+let overAt=0;
+function frame(now){
+  // after a run ends and its effects settle, stop redrawing the frozen screen to save battery
+  if(over){if(!overAt)overAt=now;if(now-overAt>1500){lastT=now;requestAnimationFrame(frame);return}}else overAt=0;
+  const dt=Math.min(50,now-lastT);lastT=now;if(!over&&moves>0)playMs+=dt;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#05070c';ctx.fillRect(0,0,W,H);
+  // board
+  ctx.fillStyle='#0b0f1c';ctx.beginPath();ctx.roundRect(BX-6,BY-6,N*CELL+12,N*CELL+12,12);ctx.fill();
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const x=BX+c*CELL,y=BY+r*CELL;
+    if(board[r][c])block(x,y,CELL,board[r][c]);else{ctx.fillStyle='#0f1424';ctx.beginPath();ctx.roundRect(x+2,y+2,CELL-4,CELL-4,6);ctx.fill()}}
+  // drop preview + lines that would clear
+  if(drag){const cell=dropCell();
+    if(cell&&fits(drag.p.cells,cell[0],cell[1])){
+      const sim=board.map(row=>row.slice());drag.p.cells.forEach(([dr,dc])=>sim[cell[0]+dr][cell[1]+dc]='x');
+      for(let k=0;k<N;k++){if(sim[k].every(Boolean)){ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(BX,BY+k*CELL,N*CELL,CELL)}if(sim.every(row=>row[k])){ctx.fillStyle='rgba(255,255,255,.08)';ctx.fillRect(BX+k*CELL,BY,CELL,N*CELL)}}
+      drag.p.cells.forEach(([dr,dc])=>block(BX+(cell[1]+dc)*CELL,BY+(cell[0]+dr)*CELL,CELL,drag.p.color,.35));
+    }}
+  // clear flashes
+  flashes=flashes.filter(f=>{const t=(now-f.t0)/300;if(t>=1)return false;ctx.fillStyle=`rgba(255,255,255,${.5*(1-t)})`;if(f.row!=null)ctx.fillRect(BX,BY+f.row*CELL,N*CELL,CELL);else ctx.fillRect(BX+f.col*CELL,BY,CELL,N*CELL);return true});
+  // tray
+  ctx.fillStyle='#0b0f1c';ctx.beginPath();ctx.roundRect(8,TRAY_Y,W-16,112,12);ctx.fill();
+  tray.forEach((p,i)=>{if(!p||(drag&&drag.i===i))return;const ok=anyFit(p.cells);const[ox,oy]=slotOrigin(i,p.cells);p.cells.forEach(([dr,dc])=>block(ox+dc*TCELL,oy+dr*TCELL,TCELL,ok?p.color:'#4a5578',ok?1:.6))});
+  // dragged piece floats above the finger
+  if(drag){const b=bbox(drag.p.cells),x=drag.x-b.w*CELL/2,y=drag.y-LIFT-b.h*CELL/2;drag.p.cells.forEach(([dr,dc])=>block(x+dc*CELL,y+dr*CELL,CELL,drag.p.color,.95))}
+  parts=parts.filter(p=>{const t=(now-p.t0)/p.life;if(t>=1)return false;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.0003*dt;ctx.globalAlpha=1-t;ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,3,3);ctx.globalAlpha=1;return true});
+  floats=floats.filter(f=>{const L=f.life||900,t=(now-f.t0)/L;if(t>=1)return false;if(t<0)return true;ctx.save();ctx.globalAlpha=t<.7?1:1-(t-.7)/.3;ctx.fillStyle=f.c;ctx.shadowColor=f.c;ctx.shadowBlur=10;ctx.font=`700 ${f.s}px "JetBrains Mono","Black Han Sans",monospace`;ctx.textAlign='center';ctx.fillText(f.t,f.x,f.y-t*20);ctx.restore();return true});
+  requestAnimationFrame(frame);
+}
+setInterval(save,3000);addEventListener('pagehide',save);
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+{const sv=store.get('nb_save',null);if(sv&&sv.board)restore(sv);else newGame()}
+requestAnimationFrame(frame);
+</script>
+</html>

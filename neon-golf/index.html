@@ -180,7 +180,7 @@ const HOLES=[
 ];
 const W=360,H=560,BR=7,HR=12,MAXPULL=150,MAXV=1.55;
 const cv=$('#cv'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);
-cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=W+'px';
+cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=`min(100%, ${W}px)`;
 
 let hi=0,hole,ball,vel=[0,0],strokes=0,scores=[],moving=false,sunk=0,aim=null,prevShot=null,trail=[],parts=[],floats=[],tNow=0,lastWall=0;
 

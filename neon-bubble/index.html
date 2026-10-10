@@ -208,7 +208,7 @@ const SPEED=0.95;                      // px per ms
 const COL=['#43f0ff','#ff4fd2','#ffc44d','#ff4b5e','#5dffa0','#b38bff'];
 
 const cv=$('#cv'),dpr=Math.min(2,window.devicePixelRatio||1);
-cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=W+'px';
+cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=`min(100%, ${W}px)`;
 const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
 
 // pre-rendered glowing bubble sprites (one per color) so 90+ bubbles stay cheap on phones

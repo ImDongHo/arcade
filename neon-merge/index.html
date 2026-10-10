@@ -186,7 +186,7 @@ const Haptic=(()=>{
 /* ---------- game ---------- */
 const W=360,H=560,LINE=104,TOP=56;
 const cv=$('#cv'),dpr=Math.min(2,window.devicePixelRatio||1);
-cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=W+'px';
+cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=`min(100%, ${W}px)`;
 const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
 const RAD=[14,19,25,31,38,46,54,63,73,84,96];
 const COL=['#43f0ff','#5dffa0','#c6ff4d','#ffc44d','#ff8a3d','#ff4b5e','#ff4fd2','#b38bff','#6b9cff','#9ffcff','#ffffff'];

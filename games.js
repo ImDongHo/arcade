@@ -118,7 +118,7 @@ window.GAMES = [
     url: "neon-blocks/index.html",
     thumb: "neon-blocks/thumb.svg",
     color: "#43f0ff",
-    status: "soon",
+    status: "play",
     meta: "끝없는 점수 도전",
     tags: ["퍼즐", "드래그"]
   },

@@ -184,7 +184,7 @@ const buzz=ms=>Haptic.bump(ms);
 const W=360,H=600,BH=26,BASEW=200,PERFECT=5,NEAR=11,GROUND=H-60,HOVER=BH*3;
 const cv=$('#cv'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);
 cv.width=W*dpr;cv.height=H*dpr;
-cv.style.maxWidth=W+'px';
+cv.style.maxWidth=`min(100%, ${W}px)`;
 
 // special blocks: gold = perfect gives +5, wide = next block grows, slow = next 3 blocks move slowly
 const SPECIAL={gold:{c:'#ffc44d',label:'+5'},wide:{c:'#43f0ff',label:'넓게'},slow:{c:'#b38bff',label:'느리게'}};
