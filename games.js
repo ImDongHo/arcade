@@ -130,7 +130,7 @@ window.GAMES = [
     url: "box-push/index.html",
     thumb: "box-push/thumb.svg",
     color: "#ffc44d",
-    status: "soon",
+    status: "play",
     meta: "30스테이지 · 3챕터",
     tags: ["퍼즐", "스와이프"]
   },

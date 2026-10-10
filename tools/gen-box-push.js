@@ -97,6 +97,12 @@ CH.forEach((ch,ci)=>ch.st.forEach(([w,h,boxes,wallP,want],k)=>{
   used.add(got.sig);levels.push({map:got.map,min:got.min});
   console.log(`${String(ci*10+k+1).padStart(2)}  ${ch.name}  상자 ${boxes}  최소 ${got.min}번 (목표 ${want}~${want+6})`);
 }));
+// 목표에 못 미친 판이 있어도 챕터 안에서는 점점 어려워지게: 5번째(쉬어가는 판)는 두고 나머지를 최소 수 순으로
+const boxCount=l=>l.map.join('').split('').filter(c=>c==='$'||c==='*').length;
+for(let c=0;c<levels.length;c+=10){
+  const rest=levels.slice(c,c+10).filter((_,k)=>k!==4).sort((a,b)=>a.min-b.min||boxCount(a)-boxCount(b));
+  rest.splice(4,0,levels[c+4]);levels.splice(c,10,...rest);
+}
 const SOLVER_SRC=`const key=(p,boxes)=>p+'|'+[...boxes].sort((a,b)=>a-b).join(',');
 function solve(L,limit=400000){
   const{w,g,goals}=L,goalSet=new Set(goals);

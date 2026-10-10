@@ -16,6 +16,7 @@
 | 네온 만다라 | 플레이 가능 | 손가락으로 그으면 대칭 네온 무늬가 그려지는 그림판 (사진 저장) |
 | 네온 미니골프 | 플레이 가능 | 당겼다 놓아 공을 쳐서 홀에 넣는 미니골프 (8홀, 범퍼, 움직이는 벽) |
 | 네온 블록 채우기 | 플레이 가능 | 조각을 끌어다 놓고 한 줄을 채워 지우는 블록 퍼즐 (콤보, 되돌리기, 이어하기) |
+| 상자 밀기 | 플레이 가능 | 상자를 밀어 표시된 자리에 넣는 창고 퍼즐 (30스테이지) |
 
 ## 새 게임 추가하기
 
@@ -27,3 +28,4 @@
 - `tools/gen-parking.js`: 주차장 탈출 스테이지 생성기. `node tools/gen-parking.js`로 `parking-escape/levels.js`를 다시 만들어요.
 - `tools/gen-color-sort.js`: 색 정렬 튜브 스테이지 생성기. `node tools/gen-color-sort.js`로 `color-sort/levels.js`를 다시 만들어요.
 - `tools/gen-one-stroke.js`: 한붓그리기 스테이지 생성기. `node tools/gen-one-stroke.js`로 `one-stroke/levels.js`를 다시 만들어요.
+- `tools/gen-box-push.js`: 상자 밀기 스테이지 생성기. `node tools/gen-box-push.js`로 `box-push/levels.js`를 다시 만들어요 (오래 걸려요).
