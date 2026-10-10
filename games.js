@@ -142,8 +142,8 @@ window.GAMES = [
     url: "neon-golf/index.html",
     thumb: "neon-golf/thumb.svg",
     color: "#5dffa0",
-    status: "soon",
-    meta: "30홀",
+    status: "play",
+    meta: "8홀 라운드",
     tags: ["아케이드", "드래그"]
   },
   {

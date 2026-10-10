@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>네온 미니골프</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: one tall neon course canvas + score card panel. Phone: board first, 4-up score row, buttons in a bottom bar. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --pink:#ff4fd2; --cyan:#43f0ff; --amber:#ffc44d; --red:#ff4b5e;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px}
+.title{display:grid;gap:2px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content}
+.back:hover{color:var(--fg)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:#5dffa0;text-shadow:0 0 18px rgba(93,255,160,.45)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;background:#05070c;border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;justify-content:center;min-width:0}
+canvas{display:block;width:100%;height:auto;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn.primary{background:#5dffa0;color:#03140b;border-color:#5dffa0}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.btn.armed{background:#3a1030;border-color:var(--pink);color:#ffd0f4}
+.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.banner{position:absolute;inset:12px;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.84);border-radius:10px}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
+.banner .rec{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 14px rgba(67,240,255,.6)}
+.banner p{margin:0;font-family:var(--f-mono)}
+.banner .time{display:block;margin-top:4px;font:500 13px var(--f-body);color:var(--muted)}
+.hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- phone layout: board first, compact score row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:10px}
+  .back{font-size:13px}
+  h1{font-size:24px}
+  .game{gap:10px}
+  .screen{padding:6px;border-radius:12px}
+  .banner{inset:6px}
+  .banner strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  header .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  header .btns .btn{padding:12px 0;font-size:15px}
+  /* keep the whole board on screen even in in-app browsers with a toolbar */
+  canvas{width:auto;max-width:100%;aspect-ratio:360/560;max-height:calc(100svh - 190px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+}
+.banner table{border-collapse:collapse;font:500 13px var(--f-mono);margin:4px auto}
+.banner td,.banner th{border:1px solid var(--line);padding:4px 7px;text-align:center}
+.banner th{color:var(--muted);font-weight:500}
+.banner .btns{justify-content:center}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="title">
+      <a class="back" href="../index.html">&larr; arcade</a>
+      <h1>네온 <span>미니골프</span></h1>
+    </div>
+    <div class="btns">
+      <button class="btn" id="bRetry" disabled>이 샷 다시</button>
+      <button class="btn" id="bRestartHole">홀 다시</button>
+      <button class="btn" id="bSkip" disabled>다음 홀로</button>
+      <button class="btn" id="bSound" aria-pressed="true">소리</button>
+    </div>
+  </header>
+
+  <section class="game">
+    <div class="screen">
+      <canvas id="cv" aria-label="미니골프 코스"></canvas>
+      <div class="banner" id="holeCard" hidden>
+        <strong id="hcTitle">파!</strong>
+        <p id="hcText"></p>
+        <div class="btns"><button class="btn primary" id="bNext">다음 홀</button></div>
+      </div>
+      <div class="banner" id="endCard" hidden>
+        <strong>라운드 끝!</strong>
+        <div id="scoreTable"></div>
+        <p id="endText"></p>
+        <div class="btns"><button class="btn primary" id="bAgain">처음부터 다시</button></div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>점수</h2>
+        <dl class="stats">
+          <div><dt>홀</dt><dd id="sHole">1/8</dd></div>
+          <div><dt>파</dt><dd id="sPar">2</dd></div>
+          <div><dt>타수</dt><dd id="sStroke">0</dd></div>
+          <div><dt>합계</dt><dd id="sTotal">±0</dd></div>
+        </dl>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>치는 방법</h2></summary>
+        <ul class="how">
+          <li>공이 멈춰 있을 때 화면 아무 데나 손가락을 대고, 보내고 싶은 방향의 반대쪽으로 끌었다 놓아요.</li>
+          <li>끄는 길이가 힘이에요. 점선이 방향, 공 둘레 링과 %가 힘을 보여줘요.</li>
+          <li>공이 홀 위를 천천히 지나가면 들어가요. 너무 빠르면 튕겨 나가요.</li>
+          <li>노란 범퍼에 맞으면 더 세게 튕겨요. 분홍 벽은 움직이는 것도 있어요.</li>
+          <li>이 샷 다시: 방금 친 샷을 없던 걸로 해요. 파+3타가 넘으면 다음 홀로 넘어갈 수 있어요(파+3으로 기록).</li>
+        </ul>
+        <p class="note">아이폰은 무음 모드에서는 소리가 나지 않아요. 라운드 기록은 가장 적은 타수만 저장돼요.</p>
+      </details>
+    </aside>
+  </section>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const Sfx=(()=>{
+  let ac=null,out=null,on=store.get('ng_sound',true);
+  function unlock(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}
+  function tone(f,d,{type='sine',vol=.18,slide=0,delay=0}={}){if(!on||!ac||ac.state!=='running')return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03)}
+  const st=n=>Math.pow(2,n/12);
+  return{unlock,get on(){return on},toggle(){on=!on;store.set('ng_sound',on);return on},
+    hit(p){tone(180+p*260,.09,{type:'triangle',vol:.2,slide:.6})},
+    wall(v){tone(320+Math.random()*60,.05,{type:'square',vol:Math.min(.08,.02+v*.05)})},
+    bump(){tone(520,.14,{vol:.16,slide:1.6})},
+    sink(){[0,4,7,12].forEach((s,i)=>tone(523*st(s),.18,{type:'triangle',vol:.14,delay:.05+i*.07}))},
+    ace(){[0,4,7,12,16,19,24].forEach((s,i)=>tone(523*st(s),.22,{type:'triangle',vol:.14,delay:i*.07}))}};
+})();
+const buzz=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
+
+/* holes: outer course outline, solid blocks [x,y,w,h], round bumpers [x,y,r], sliding blocks */
+const HOLES=[
+  {par:2,start:[180,460],hole:[180,110],outer:[[60,40],[300,40],[300,520],[60,520]]},
+  {par:3,start:[90,470],hole:[270,110],outer:[[40,40],[320,40],[320,200],[140,200],[140,520],[40,520]]},
+  {par:3,start:[180,470],hole:[180,100],outer:[[40,40],[320,40],[320,520],[40,520]],blocks:[[110,250,140,24]]},
+  {par:2,start:[180,470],hole:[180,90],outer:[[40,40],[320,40],[320,520],[40,520]],bumpers:[[120,270,20],[240,270,20],[180,195,20]]},
+  {par:2,start:[180,480],hole:[180,90],outer:[[40,40],[320,40],[320,300],[230,520],[130,520],[40,300]]},
+  {par:3,start:[270,470],hole:[90,100],outer:[[40,40],[320,40],[320,520],[40,520]],blocks:[[40,190,200,20],[120,340,200,20]]},
+  {par:3,start:[180,470],hole:[180,105],outer:[[40,40],[320,40],[320,520],[40,520]],blocks:[[150,170,60,200]],bumpers:[[60,60,16],[300,60,16]]},
+  {par:3,start:[180,470],hole:[180,95],outer:[[40,40],[320,40],[320,520],[40,520]],movers:[{x:40,y:270,w:120,h:22,range:160,speed:.0011}],bumpers:[[90,150,14],[270,150,14]]},
+];
+const W=360,H=560,BR=7,HR=12,MAXPULL=150,MAXV=1.55;
+const cv=$('#cv'),ctx=cv.getContext('2d'),dpr=Math.min(2,window.devicePixelRatio||1);
+cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=W+'px';
+
+let hi=0,hole,ball,vel=[0,0],strokes=0,scores=[],moving=false,sunk=0,aim=null,prevShot=null,trail=[],parts=[],floats=[],tNow=0,lastWall=0;
+
+function segsOf(h,t){
+  const S=[];const o=h.outer;for(let i=0;i<o.length;i++)S.push([o[i],o[(i+1)%o.length]]);
+  const box=([x,y,w,hh])=>{const p=[[x,y],[x+w,y],[x+w,y+hh],[x,y+hh]];for(let i=0;i<4;i++)S.push([p[i],p[(i+1)%4],'block'])};
+  (h.blocks||[]).forEach(box);
+  (h.movers||[]).forEach(m=>box([m.x+(Math.sin(t*m.speed)*.5+.5)*m.range,m.y,m.w,m.h]));
+  return S;
+}
+function loadHole(i){
+  hi=i;hole=HOLES[i];ball=[...hole.start];vel=[0,0];strokes=0;moving=false;sunk=0;aim=null;prevShot=null;trail=[];
+  $('#holeCard').hidden=true;$('#endCard').hidden=true;hud();
+}
+function totalVsPar(){let d=0;scores.forEach((s,i)=>d+=s-HOLES[i].par);return d}
+const fmt=d=>d===0?'±0':(d>0?'+':'')+d;
+function hud(){
+  $('#sHole').textContent=`${hi+1}/${HOLES.length}`;$('#sPar').textContent=hole.par;$('#sStroke').textContent=strokes;
+  $('#sTotal').textContent=fmt(totalVsPar());
+  $('#bRetry').disabled=!prevShot||moving||sunk>0;$('#bSkip').disabled=strokes<hole.par+3||sunk>0;
+}
+
+/* input: press anywhere, pull back, release */
+const toXY=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height]};
+cv.addEventListener('pointerdown',e=>{Sfx.unlock();if(moving||sunk||!$('#holeCard').hidden||!$('#endCard').hidden)return;aim={s:toXY(e),c:toXY(e)};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener('pointermove',e=>{if(aim)aim.c=toXY(e)});
+cv.addEventListener('pointerup',e=>{
+  if(!aim)return;const a=aim;aim=null;
+  const dx=a.s[0]-a.c[0],dy=a.s[1]-a.c[1],len=Math.hypot(dx,dy);if(len<10)return;
+  const p=Math.min(1,len/MAXPULL),v=p*MAXV;
+  prevShot={ball:[...ball],strokes};
+  vel=[dx/len*v,dy/len*v];moving=true;strokes++;Sfx.hit(p);buzz(15);hud();
+});
+cv.addEventListener('pointercancel',()=>{aim=null});
+{const sc=$('.screen');let last=0;
+ sc.addEventListener('touchend',e=>{if(e.timeStamp-last<400)e.preventDefault();last=e.timeStamp},{passive:false});
+ ['gesturestart','gesturechange'].forEach(n=>sc.addEventListener(n,e=>e.preventDefault()));}
+
+/* physics */
+function step(dt){
+  tNow+=dt;
+  if(!moving)return;
+  const sp=Math.hypot(vel[0],vel[1]);
+  const n=Math.max(1,Math.ceil(sp*dt/(BR*.5)));const h=dt/n;
+  const segs=segsOf(hole,tNow);
+  for(let k=0;k<n;k++){
+    ball[0]+=vel[0]*h;ball[1]+=vel[1]*h;
+    for(const [a,b,kind] of segs){
+      const ex=b[0]-a[0],ey=b[1]-a[1],L=ex*ex+ey*ey;let t=((ball[0]-a[0])*ex+(ball[1]-a[1])*ey)/L;t=Math.max(0,Math.min(1,t));
+      const px=a[0]+ex*t,py=a[1]+ey*t,dx=ball[0]-px,dy=ball[1]-py,d=Math.hypot(dx,dy);
+      if(d<BR&&d>0){const nx=dx/d,ny=dy/d;ball[0]=px+nx*BR;ball[1]=py+ny*BR;const vn=vel[0]*nx+vel[1]*ny;
+        if(vn<0){vel[0]-=1.8*vn*nx;vel[1]-=1.8*vn*ny;if(tNow-lastWall>60){Sfx.wall(-vn);lastWall=tNow}}}
+    }
+    for(const [x,y,r] of hole.bumpers||[]){
+      const dx=ball[0]-x,dy=ball[1]-y,d=Math.hypot(dx,dy);
+      if(d<r+BR){const nx=dx/d,ny=dy/d;ball[0]=x+nx*(r+BR);ball[1]=y+ny*(r+BR);const vn=vel[0]*nx+vel[1]*ny;
+        if(vn<0){vel[0]-=2*vn*nx;vel[1]-=2*vn*ny;const s=Math.hypot(vel[0],vel[1]),boost=Math.min(MAXV,s*1.15+.1)/s;vel[0]*=boost;vel[1]*=boost;Sfx.bump();buzz(10);
+          for(let q=0;q<8;q++){const a=Math.random()*7;parts.push({x:x+nx*r,y:y+ny*r,vx:Math.cos(a)*.08,vy:Math.sin(a)*.08,c:'#ffc44d',t0:performance.now(),life:350})}}}
+    }
+    // the cup: slow enough over it and the ball drops; fast balls lip out with a nudge
+    const hx=hole.hole[0]-ball[0],hy=hole.hole[1]-ball[1],hd=Math.hypot(hx,hy),s=Math.hypot(vel[0],vel[1]);
+    if(hd<HR){if(s<.6){sink();return}vel[0]+=hx/hd*.02;vel[1]+=hy/hd*.02}
+    else if(hd<HR*2.2&&s<.35){vel[0]+=hx/hd*.0018*h;vel[1]+=hy/hd*.0018*h}
+  }
+  // rolling friction
+  const s2=Math.hypot(vel[0],vel[1]),ns=Math.max(0,s2-(s2*.0016+.00022)*dt);
+  if(ns<.012){vel=[0,0];moving=false;hud();return}
+  vel[0]*=ns/s2;vel[1]*=ns/s2;
+}
+function sink(){
+  moving=false;sunk=performance.now();vel=[0,0];ball=[...hole.hole];
+  const d=strokes-hole.par;
+  const name=strokes===1?'홀인원!':d<=-2?'이글!':d===-1?'버디!':d===0?'파!':d===1?'보기':d===2?'더블 보기':`+${d}`;
+  if(strokes===1){Sfx.ace();buzz(80)}else{Sfx.sink();buzz(40)}
+  for(let q=0;q<26;q++){const a=Math.random()*7,v=.05+Math.random()*.18;parts.push({x:hole.hole[0],y:hole.hole[1],vx:Math.cos(a)*v,vy:Math.sin(a)*v,c:['#43f0ff','#ff4fd2','#ffc44d','#5dffa0'][q%4],t0:sunk,life:700})}
+  scores[hi]=strokes;hud();
+  setTimeout(()=>{
+    if(hi===HOLES.length-1){showEnd();return}
+    $('#hcTitle').textContent=name;$('#hcText').textContent=`${strokes}타 · 파 ${hole.par} · 합계 ${fmt(totalVsPar())}`;$('#holeCard').hidden=false;
+  },900);
+}
+function showEnd(){
+  const par=HOLES.reduce((s,h)=>s+h.par,0),tot=scores.reduce((s,x)=>s+(x||0),0);
+  let t='<table><tr><th>홀</th>'+HOLES.map((_,i)=>`<th>${i+1}</th>`).join('')+'</tr><tr><th>파</th>'+HOLES.map(h=>`<td>${h.par}</td>`).join('')+'</tr><tr><th>타</th>'+scores.map((s,i)=>`<td style="color:${s<HOLES[i].par?'#5dffa0':s>HOLES[i].par?'#ff8a3d':'#e7eaf4'}">${s}</td>`).join('')+'</tr></table>';
+  $('#scoreTable').innerHTML=t;
+  const best=store.get('ng_best',null),rec=best==null||tot<best;if(rec)store.set('ng_best',tot);
+  $('#endText').textContent=`${tot}타 · 파 ${par} · ${fmt(tot-par)}`+(rec?' · 새 최고 기록!':` · 최고 ${best}타`);
+  $('#endCard').hidden=false;
+}
+$('#bNext').onclick=()=>{Sfx.unlock();loadHole(hi+1)};
+$('#bAgain').onclick=()=>{Sfx.unlock();scores=[];loadHole(0)};
+$('#bRetry').onclick=()=>{if(!prevShot||moving||sunk)return;ball=prevShot.ball;strokes=prevShot.strokes;prevShot=null;vel=[0,0];hud()};
+$('#bRestartHole').onclick=()=>{if(sunk)return;loadHole(hi)};
+// after par+3 strokes the hole can be skipped, counted as par+3 so nobody gets stuck
+$('#bSkip').onclick=()=>{if(sunk||strokes<hole.par+3)return;strokes=hole.par+3;sink()};
+const syncS=()=>{const b=$('#bSound');b.textContent=Sfx.on?'소리 켬':'소리 끔';b.classList.toggle('off',!Sfx.on);b.setAttribute('aria-pressed',String(Sfx.on))};
+$('#bSound').onclick=()=>{Sfx.unlock();Sfx.toggle();syncS();Sfx.bump()};syncS();
+
+/* drawing */
+function path(pts){ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath()}
+let lastT=performance.now();
+function frame(now){
+  const dt=Math.min(32,now-lastT);lastT=now;step(dt);
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#05070c';ctx.fillRect(0,0,W,H);
+  // turf
+  path(hole.outer);const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b1d1a');g.addColorStop(1,'#0a1512');ctx.fillStyle=g;ctx.fill();
+  ctx.save();ctx.clip();ctx.strokeStyle='rgba(93,255,160,.05)';ctx.lineWidth=1;for(let y=0;y<H;y+=22){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.restore();
+  ctx.save();ctx.strokeStyle='#5dffa0';ctx.shadowColor='#5dffa0';ctx.shadowBlur=14;ctx.lineWidth=3;path(hole.outer);ctx.stroke();ctx.restore();
+  // blocks and movers
+  const blocks=(hole.blocks||[]).concat((hole.movers||[]).map(m=>[m.x+(Math.sin(tNow*m.speed)*.5+.5)*m.range,m.y,m.w,m.h]));
+  for(const [x,y,w,h] of blocks){ctx.save();ctx.fillStyle='#1a1230';ctx.strokeStyle='#ff4fd2';ctx.shadowColor='#ff4fd2';ctx.shadowBlur=12;ctx.lineWidth=2.5;ctx.beginPath();ctx.roundRect(x,y,w,h,4);ctx.fill();ctx.stroke();ctx.restore()}
+  for(const [x,y,r] of hole.bumpers||[]){ctx.save();ctx.strokeStyle='#ffc44d';ctx.shadowColor='#ffc44d';ctx.shadowBlur=14;ctx.lineWidth=3;ctx.fillStyle='#211a08';ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(x,y,r*.45,0,7);ctx.stroke();ctx.restore()}
+  // cup + flag
+  const [hx,hy]=hole.hole;
+  ctx.save();ctx.fillStyle='#000';ctx.strokeStyle='#ffc44d';ctx.lineWidth=2;ctx.shadowColor='#ffc44d';ctx.shadowBlur=10;ctx.beginPath();ctx.arc(hx,hy,HR,0,7);ctx.fill();ctx.stroke();ctx.restore();
+  if(!sunk){ctx.strokeStyle='#e7eaf4';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(hx,hy-34);ctx.stroke();ctx.fillStyle='#ff4fd2';ctx.beginPath();ctx.moveTo(hx,hy-34);ctx.lineTo(hx+17,hy-28);ctx.lineTo(hx,hy-22);ctx.fill()}
+  // aim
+  if(aim&&!moving){
+    const dx=aim.s[0]-aim.c[0],dy=aim.s[1]-aim.c[1],len=Math.hypot(dx,dy);
+    if(len>=10){const p=Math.min(1,len/MAXPULL),ux=dx/len,uy=dy/len,col=p<.5?'#5dffa0':p<.85?'#ffc44d':'#ff4b5e';
+      ctx.save();ctx.setLineDash([3,7]);ctx.lineDashOffset=-now*.05;ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(ball[0],ball[1]);ctx.lineTo(ball[0]+ux*(40+p*150),ball[1]+uy*(40+p*150));ctx.stroke();ctx.restore();
+      ctx.save();ctx.strokeStyle='rgba(231,234,244,.35)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ball[0],ball[1]);ctx.lineTo(ball[0]-ux*p*60,ball[1]-uy*p*60);ctx.stroke();ctx.restore();
+      ctx.save();ctx.strokeStyle=col;ctx.lineWidth=3;ctx.shadowColor=col;ctx.shadowBlur=10;ctx.beginPath();ctx.arc(ball[0],ball[1],BR+7,-Math.PI/2,-Math.PI/2+p*Math.PI*2);ctx.stroke();ctx.restore();
+      ctx.fillStyle=col;ctx.font='700 12px "JetBrains Mono",monospace';ctx.textAlign='center';ctx.fillText(Math.round(p*100)+'%',ball[0],ball[1]+BR+24);
+    }
+  }
+  // ball
+  if(moving){trail.push([ball[0],ball[1]]);if(trail.length>14)trail.shift()}else if(trail.length)trail.shift();
+  trail.forEach(([x,y],k)=>{ctx.globalAlpha=k/trail.length*.4;ctx.fillStyle='#e7eaf4';ctx.beginPath();ctx.arc(x,y,BR*k/trail.length,0,7);ctx.fill()});ctx.globalAlpha=1;
+  const sc=sunk?Math.max(0,1-(now-sunk)/350):1;
+  if(sc>0){ctx.save();ctx.fillStyle='#fff';ctx.shadowColor='#fff';ctx.shadowBlur=14;ctx.beginPath();ctx.arc(ball[0],ball[1],BR*sc,0,7);ctx.fill();ctx.restore()}
+  if(!moving&&!sunk&&!aim&&strokes===0){ctx.fillStyle=`rgba(231,234,244,${.5+.3*Math.sin(now/300)})`;ctx.font='600 13px "IBM Plex Sans KR",sans-serif';ctx.textAlign='center';ctx.fillText('화면을 끌어 당겼다 놓으세요',W/2,H-14)}
+  parts=parts.filter(p=>{const t=(now-p.t0)/p.life;if(t>=1)return false;p.x+=p.vx*dt;p.y+=p.vy*dt;ctx.globalAlpha=1-t;ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,3,3);ctx.globalAlpha=1;return true});
+  // hole label
+  ctx.fillStyle='rgba(139,147,173,.8)';ctx.font='600 12px "JetBrains Mono",monospace';ctx.textAlign='left';ctx.fillText(`HOLE ${hi+1} · PAR ${hole.par}`,12,22);
+  requestAnimationFrame(frame);
+}
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+loadHole(0);requestAnimationFrame(frame);
+</script>
+</html>
