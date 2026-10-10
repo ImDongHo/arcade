@@ -154,7 +154,7 @@ window.GAMES = [
     url: "neon-mandala/index.html",
     thumb: "neon-mandala/thumb.svg",
     color: "#ff4fd2",
-    status: "soon",
+    status: "play",
     meta: "점수 없이 그리기",
     tags: ["편하게 놀기", "드래그"]
   }

@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>네온 만다라</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: one round drawing pad + pen panel. Phone: board first, 4-up score row, buttons in a bottom bar. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --pink:#ff4fd2; --cyan:#43f0ff; --amber:#ffc44d; --red:#ff4b5e;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px}
+.title{display:grid;gap:2px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content}
+.back:hover{color:var(--fg)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:var(--pink);text-shadow:0 0 18px rgba(255,79,210,.45)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;background:#05070c;border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;justify-content:center;min-width:0}
+canvas{display:block;width:100%;height:auto;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn.primary{background:var(--pink);color:#1a0316;border-color:var(--pink)}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.btn.armed{background:#3a1030;border-color:var(--pink);color:#ffd0f4}
+.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.banner{position:absolute;inset:12px;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.84);border-radius:10px}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--amber);text-shadow:0 0 22px rgba(255,196,77,.5)}
+.banner .rec{font:700 15px var(--f-mono);color:var(--cyan);text-shadow:0 0 14px rgba(67,240,255,.6)}
+.banner p{margin:0;font-family:var(--f-mono)}
+.banner .time{display:block;margin-top:4px;font:500 13px var(--f-body);color:var(--muted)}
+.hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- phone layout: board first, compact score row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:10px}
+  .back{font-size:13px}
+  h1{font-size:24px}
+  .game{gap:10px}
+  .screen{padding:6px;border-radius:12px}
+  .banner{inset:6px}
+  .banner strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  header .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  header .btns .btn{padding:12px 0;font-size:15px}
+}
+.pad{position:relative;aspect-ratio:1;width:100%;border-radius:18px;overflow:hidden;background:#030409;border:1px solid var(--line)}
+.pad canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
+.hint{position:absolute;inset:auto 0 14px;text-align:center;font-size:13px;color:var(--muted);pointer-events:none;transition:opacity .4s}
+.row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.row>span{font-size:12px;color:var(--muted);width:36px;flex:none}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid transparent;background:var(--c);cursor:pointer;padding:0;box-shadow:0 0 10px color-mix(in srgb,var(--c) 60%,transparent);touch-action:manipulation}
+.sw.rainbow{background:conic-gradient(#43f0ff,#5dffa0,#ffc44d,#ff4fd2,#b38bff,#43f0ff);--c:#ffffff}
+.sw[aria-pressed="true"]{border-color:#fff;transform:scale(1.12)}
+.chip{font:600 13px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;touch-action:manipulation}
+.chip[aria-pressed="true"]{background:var(--cyan);border-color:var(--cyan);color:#041016}
+.sw:focus-visible,.chip:focus-visible,.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.btn.save{background:var(--pink);border-color:var(--pink);color:#1a0316}
+.shot{position:fixed;inset:0;z-index:40;background:rgba(3,4,9,.92);display:grid;place-content:center;gap:12px;padding:16px;text-align:center}
+.shot img{width:min(86vw,420px);aspect-ratio:1;border-radius:14px;border:1px solid var(--line);-webkit-touch-callout:default;user-select:auto}
+.shot p{margin:0;font-size:14px;color:var(--muted)}
+.shot .row{justify-content:center}
+.tools{display:grid;gap:10px}
+.screen{display:block}
+.btn.armed{background:#3a1030;border-color:var(--pink);color:#ffd0f4}
+.sw:focus-visible,.chip:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="title">
+      <a class="back" href="../index.html">&larr; arcade</a>
+      <h1>네온 <span>만다라</span></h1>
+    </div>
+    <div class="btns">
+      <button class="btn" id="bUndo" disabled>되돌리기</button>
+      <button class="btn" id="bClear">새로 그리기</button>
+      <button class="btn" id="bSpin">돌려 보기</button>
+      <button class="btn save" id="bSave">사진 저장</button>
+    </div>
+  </header>
+
+  <section class="game">
+    <div class="screen">
+      <div class="pad">
+        <canvas id="cv" aria-label="만다라 그림판"></canvas>
+        <div class="hint" id="hint">아무 데나 손가락으로 그어 보세요</div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="card tools">
+        <h2>펜</h2>
+        <div class="row" id="colors"><span>색</span></div>
+        <div class="row" id="syms"><span>대칭</span></div>
+        <div class="row"><span>굵기</span>
+          <button class="chip" data-w="2" type="button">가늘게</button>
+          <button class="chip" data-w="4" type="button" aria-pressed="true">보통</button>
+          <button class="chip" data-w="8" type="button">굵게</button>
+          <button class="chip" id="bMirror" type="button" aria-pressed="true">거울</button>
+        </div>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>그리는 방법</h2></summary>
+        <ul class="how">
+          <li>동그란 그림판에 손가락으로 그으면, 가운데를 중심으로 여러 방향에 똑같이 그려져요.</li>
+          <li>대칭은 4·6·8·12방향 중에 골라요. 거울을 켜면 좌우로도 뒤집혀 꽃잎처럼 그려져요.</li>
+          <li>무지개 색은 그을수록 색이 천천히 바뀌어요.</li>
+          <li>돌려 보기를 누르면 그림이 천천히 돌아요. 그림판을 만지면 멈추고 이어서 그릴 수 있어요.</li>
+          <li>사진 저장을 누르면 1080×1080 사진으로 만들어서 저장하거나 공유할 수 있어요.</li>
+        </ul>
+        <p class="note">점수도 실패도 없어요. 마음 가는 대로 그려 보세요.</p>
+      </details>
+    </aside>
+  </section>
+</div>
+<div class="shot" id="shot" hidden>
+  <img id="shotImg" alt="완성한 만다라">
+  <p id="shotMsg">사진을 길게 누르면 사진 앱에 저장할 수 있어요.</p>
+  <div class="row"><button class="btn primary" id="bShare" type="button">공유 / 저장</button><a class="btn" id="bDown" download="neon-mandala.png">내려받기</a><button class="btn" id="bShotClose" type="button">닫기</button></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const COLORS=['#43f0ff','#ff4fd2','#ffc44d','#5dffa0','#b38bff','#ff8a3d','#ffffff'];
+const cv=$('#cv');let ctx=cv.getContext('2d');
+let S=0,dpr=1;                       // canvas size in css px
+let strokes=[],cur=null,color='rainbow',width=4,sym=6,mirror=true,spin=0,spinning=false;
+
+function size(){
+  const r=cv.getBoundingClientRect();dpr=Math.min(2,window.devicePixelRatio||1);S=r.width;
+  cv.width=Math.round(S*dpr);cv.height=Math.round(S*dpr);redraw();
+}
+addEventListener('resize',size);new ResizeObserver(()=>{if(Math.abs(cv.getBoundingClientRect().width-S)>1)size()}).observe(cv);
+
+/* drawing: points are stored relative to the centre (-1..1) so the picture survives resizing */
+function colorAt(st,k){if(st.color!=='rainbow')return st.color;return`hsl(${(st.hue+k*1.2)%360} 100% 62%)`}
+function seg(st,a,b,k){
+  const half=S/2;ctx.lineWidth=st.w*(S/360);
+  ctx.strokeStyle=colorAt(st,k);ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=st.w*2.2*(S/360);
+  for(let i=0;i<st.sym;i++){
+    const ang=i*2*Math.PI/st.sym;
+    for(const m of st.mirror?[1,-1]:[1]){
+      ctx.save();ctx.translate(half,half);ctx.rotate(ang+spin);ctx.scale(1,m);
+      ctx.beginPath();ctx.moveTo(a[0]*half,a[1]*half);ctx.lineTo(b[0]*half,b[1]*half);ctx.stroke();ctx.restore();
+    }
+  }
+}
+function dot(st,a){seg(st,a,[a[0]+.0005,a[1]+.0005],0)}
+function backdrop(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0;
+  ctx.fillStyle='#030409';ctx.fillRect(0,0,S,S);
+  // faint guide spokes for the current symmetry
+  ctx.save();ctx.translate(S/2,S/2);ctx.rotate(spin);ctx.strokeStyle='rgba(130,150,200,.08)';ctx.lineWidth=1;ctx.setLineDash([2,6]);
+  for(let i=0;i<sym;i++){ctx.rotate(2*Math.PI/sym);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-S/2);ctx.stroke()}
+  ctx.setLineDash([]);ctx.beginPath();ctx.arc(0,0,S*.46,0,7);ctx.stroke();ctx.restore();
+  ctx.lineCap='round';ctx.lineJoin='round';ctx.globalCompositeOperation='lighter';
+}
+function redraw(){
+  backdrop();
+  for(const st of strokes){if(st.pts.length===1)dot(st,st.pts[0]);for(let k=1;k<st.pts.length;k++)seg(st,st.pts[k-1],st.pts[k],k)}
+}
+const toP=e=>{const r=cv.getBoundingClientRect();return[((e.clientX-r.left)/r.width)*2-1,((e.clientY-r.top)/r.height)*2-1]};
+// undo the current spin so new lines land where the finger is
+const unspin=p=>{const c=Math.cos(-spin),s=Math.sin(-spin);return[p[0]*c-p[1]*s,p[0]*s+p[1]*c]};
+let activeId=null;
+cv.addEventListener('pointerdown',e=>{
+  if(activeId!==null)return;activeId=e.pointerId;try{cv.setPointerCapture(e.pointerId)}catch(_){}
+  if(spinning)stopSpin();
+  cur={pts:[unspin(toP(e))],color,w:width,sym,mirror,hue:Math.random()*360};strokes.push(cur);
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+  dot(cur,cur.pts[0]);$('#hint').style.opacity=0;$('#bUndo').disabled=false;
+});
+cv.addEventListener('pointermove',e=>{
+  if(e.pointerId!==activeId||!cur)return;
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  for(const ev of evs){const p=unspin(toP(ev)),q=cur.pts[cur.pts.length-1];
+    if(Math.hypot(p[0]-q[0],p[1]-q[1])<.006)continue;cur.pts.push(p);seg(cur,q,p,cur.pts.length)}
+});
+const end=e=>{if(e.pointerId!==activeId)return;activeId=null;cur=null};
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+
+/* controls */
+{const box=$('#colors');
+ const add=(c,label)=>{const b=document.createElement('button');b.type='button';b.className='sw'+(c==='rainbow'?' rainbow':'');if(c!=='rainbow')b.style.setProperty('--c',c);
+   b.setAttribute('aria-label',label);b.setAttribute('aria-pressed',String(c===color));b.onclick=()=>{color=c;box.querySelectorAll('.sw').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))};box.appendChild(b)};
+ add('rainbow','무지개');['시안','핑크','노랑','초록','보라','주황','하양'].forEach((n,i)=>add(COLORS[i],n));}
+{const box=$('#syms');
+ [4,6,8,12].forEach(n=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=n+'방향';b.setAttribute('aria-pressed',String(n===sym));
+   b.onclick=()=>{sym=n;box.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));redraw()};box.appendChild(b)});}
+document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{width=+b.dataset.w;document.querySelectorAll('[data-w]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
+$('#bMirror').onclick=()=>{mirror=!mirror;$('#bMirror').setAttribute('aria-pressed',String(mirror))};
+$('#bUndo').onclick=()=>{strokes.pop();redraw();$('#bUndo').disabled=!strokes.length};
+// clearing needs a second tap within 2.5s so a stray tap never wipes a drawing
+let armT=0,armTimer=0;
+function disarm(){armT=0;clearTimeout(armTimer);const b=$('#bClear');b.textContent='새로 그리기';b.classList.remove('armed')}
+$('#bClear').onclick=()=>{
+  if(!strokes.length)return;
+  if(!armT){armT=1;const b=$('#bClear');b.textContent='한 번 더 누르면 지워져요';b.classList.add('armed');armTimer=setTimeout(disarm,2500);return}
+  disarm();strokes=[];spin=0;redraw();$('#bUndo').disabled=true;$('#hint').style.opacity=1;
+};
+// spin slowly so the finished mandala can be admired; touching the pad stops it
+let lastT=0;
+function stopSpin(){spinning=false;cache=null;$('#bSpin').textContent='돌려 보기';redraw()}
+$('#bSpin').onclick=()=>{if(spinning){stopSpin();return}spinning=true;$('#bSpin').textContent='멈추기';lastT=performance.now();requestAnimationFrame(tick)};
+// the picture is drawn once into a spare canvas, then only that image is rotated each frame (cheap on phones)
+let cache=null,base=0;
+function tick(now){
+  if(!spinning)return;
+  if(!cache){base=spin;cache=document.createElement('canvas');cache.width=cv.width;cache.height=cv.height;cache.getContext('2d').drawImage(cv,0,0)}
+  spin+=(now-lastT)*.00035;lastT=now;
+  ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0;ctx.fillStyle='#030409';ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.translate(cv.width/2,cv.height/2);ctx.rotate(spin-base);ctx.drawImage(cache,-cv.width/2,-cv.height/2);
+  requestAnimationFrame(tick);
+}
+
+/* save as a photo: render the strokes again at 1080px without the guide lines, then share or show it */
+function renderPhoto(px){
+  const out=document.createElement('canvas');out.width=out.height=px;
+  const keep=[ctx,S,dpr];ctx=out.getContext('2d');S=px;dpr=1;
+  ctx.fillStyle='#030409';ctx.fillRect(0,0,px,px);ctx.lineCap='round';ctx.lineJoin='round';ctx.globalCompositeOperation='lighter';
+  for(const st of strokes){if(st.pts.length===1)dot(st,st.pts[0]);for(let k=1;k<st.pts.length;k++)seg(st,st.pts[k-1],st.pts[k],k)}
+  ctx.globalCompositeOperation='source-over';ctx.shadowBlur=0;ctx.fillStyle='rgba(139,147,173,.55)';ctx.font=`500 ${px*.022}px "JetBrains Mono",monospace`;ctx.textAlign='right';
+  ctx.fillText('arcade · 네온 만다라',px*.97,px*.97);
+  [ctx,S,dpr]=keep;return out;
+}
+let shotBlob=null;
+$('#bSave').onclick=async()=>{
+  if(!strokes.length){$('#hint').textContent='먼저 그림을 그려 주세요';$('#hint').style.opacity=1;return}
+  if(spinning)stopSpin();
+  const c=renderPhoto(1080);
+  shotBlob=await new Promise(r=>c.toBlob(r,'image/png'));
+  const url=c.toDataURL('image/png');$('#shotImg').src=url;$('#bDown').href=url;$('#shot').hidden=false;
+  $('#bShare').hidden=!(navigator.canShare&&navigator.canShare({files:[new File([shotBlob],'mandala.png',{type:'image/png'})]}));
+};
+$('#bShare').onclick=async()=>{
+  try{await navigator.share({files:[new File([shotBlob],'neon-mandala.png',{type:'image/png'})],title:'네온 만다라'});$('#shotMsg').textContent='공유 창에서 "이미지 저장"을 누르면 사진 앱에 저장돼요.'}
+  catch(e){if(e&&e.name!=='AbortError')$('#shotMsg').textContent='공유 창을 열 수 없어요. 사진을 길게 누르거나 내려받기를 눌러 주세요.'}
+};
+$('#bShotClose').onclick=()=>{$('#shot').hidden=true};
+
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+size();
+</script>
+</html>
