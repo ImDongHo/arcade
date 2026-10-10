@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>네온 짝 맞추기</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: grid of flip cards + side panel. Phone: board first, 4-up stats row, buttons in a bottom bar. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --pink:#ff4fd2; --cyan:#43f0ff; --amber:#ffc44d; --red:#ff4b5e;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px}
+.title{display:grid;gap:2px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content}
+.back:hover{color:var(--fg)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:var(--cyan);text-shadow:0 0 18px rgba(67,240,255,.45)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;background:#05070c;border:1px solid var(--line);border-radius:16px;padding:12px;min-width:0}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn.primary{background:var(--cyan);color:#04161a;border-color:var(--cyan)}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.btn.armed{background:#0b3038;border-color:var(--cyan);color:#c9fbff}
+.btn:focus-visible,.sz:focus-visible,.mc:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;touch-action:manipulation}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
+/* size picker */
+.sizes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sz{background:#171c2a;border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:8px 6px;font:600 14px var(--f-body);cursor:pointer;display:grid;gap:0;touch-action:manipulation}
+.sz small{font:500 11px var(--f-mono);color:var(--muted)}
+.sz.on{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 0 1px rgba(67,240,255,.3)}
+/* board + flip cards */
+.board{display:grid;gap:8px;grid-template-columns:repeat(var(--cols),1fr);margin:0 auto;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.mc{aspect-ratio:3/4;perspective:600px;cursor:pointer;border:0;padding:0;background:none;font:inherit;touch-action:manipulation;border-radius:10px}
+.in{position:relative;width:100%;height:100%;transition:transform .32s cubic-bezier(.3,.7,.3,1);transform-style:preserve-3d}
+.mc.up .in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:grid;place-items:center}
+.back-f{background:#0d111b;border:1.5px solid var(--line);background-image:radial-gradient(circle at 50% 50%,rgba(67,240,255,.10) 0 18%,transparent 19%),repeating-linear-gradient(45deg,transparent 0 7px,rgba(255,255,255,.025) 7px 8px)}
+.back-f::after{content:"";width:22%;aspect-ratio:1;border:1.5px solid rgba(67,240,255,.35);border-radius:50%}
+.board.hov .mc:not(.up):hover .back-f{border-color:#2f3a52}
+.front{transform:rotateY(180deg);background:#0b0e17;border:1.5px solid var(--c)}
+.front svg{width:62%;height:62%;overflow:visible;filter:drop-shadow(0 0 5px var(--c))}
+.mc.done .front{box-shadow:0 0 0 1px var(--c),0 0 16px -2px var(--c),inset 0 0 18px -6px var(--c);animation:pop .45s ease-out}
+.mc.miss .front{animation:shake .32s ease-in-out}
+@keyframes pop{0%{transform:rotateY(180deg) scale(1)}40%{transform:rotateY(180deg) scale(1.08)}100%{transform:rotateY(180deg) scale(1)}}
+@keyframes shake{0%,100%{translate:0}25%{translate:-4px}75%{translate:4px}}
+.msg{min-height:20px;margin:8px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+.msg.peek{color:var(--cyan)}
+.spark{position:absolute;pointer-events:none;width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);animation:fly .7s ease-out forwards;z-index:3}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+.end{position:absolute;inset:0;display:grid;place-content:center;gap:10px;text-align:center;background:rgba(5,7,12,.82);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);border-radius:16px;z-index:6;padding:16px}
+.end strong{font-family:var(--f-display);font-weight:400;font-size:38px;color:var(--cyan);text-shadow:0 0 22px rgba(67,240,255,.55)}
+.end p{margin:0;font-family:var(--f-mono)}
+.end .rec{color:var(--amber);font:600 14px var(--f-body)}
+.end .btn{justify-self:center;font-size:16px;padding:12px 28px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.mc.done .front,.mc.miss .front{animation:none}}
+/* ---- phone layout: board first, compact stats row, thumb bar fixed at the bottom ---- */
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:10px}
+  .back{font-size:13px}
+  h1{font-size:24px}
+  .game{gap:10px}
+  .screen{padding:8px;border-radius:12px}
+  .board{gap:6px}
+  .end strong{font-size:34px}
+  .side{gap:10px}
+  .card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}
+  .side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}
+  .stats dd{font-size:17px}
+  .sizes{grid-template-columns:repeat(4,1fr);gap:6px}
+  .sz{font-size:13px;padding:7px 2px}
+  header .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  header .btns .btn{padding:12px 0;font-size:15px}
+}
+</style>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <a class="back" href="../index.html">&larr; arcade</a>
+      <h1>네온 <span>짝 맞추기</span></h1>
+    </div>
+    <div class="btns">
+      <button class="btn" id="bNew">새 판</button>
+      <button class="btn" id="bSound" aria-pressed="true">소리</button>
+      <button class="btn" id="bVib" aria-pressed="true">진동</button>
+    </div>
+  </header>
+  <section class="game">
+    <div class="screen">
+      <div class="board" id="board" aria-label="카드 판"></div>
+      <p class="msg" id="msg" aria-live="polite"></p>
+      <div class="end" id="end" hidden>
+        <strong>다 찾았어요!</strong>
+        <p id="endText"></p>
+        <div class="rec" id="endRec"></div>
+        <button class="btn primary" id="bAgain" type="button">한 판 더</button>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>기록</h2>
+        <dl class="stats">
+          <div><dt>크기</dt><dd id="sSize">4×4</dd></div>
+          <div><dt>찾은 짝</dt><dd id="sFound">0/8</dd></div>
+          <div><dt>내 기록</dt><dd id="sBest">-</dd></div>
+          <div><dt>다 맞춘 판</dt><dd id="sWins">0</dd></div>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>판 크기</h2>
+        <div class="sizes" id="sizes"></div>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>플레이 방법</h2></summary>
+        <ul class="how">
+          <li>시작하면 모든 카드를 잠깐 보여준 뒤 덮어요. 다 외웠으면 카드를 눌러 바로 시작해도 돼요.</li>
+          <li>카드를 두 장씩 뒤집어 같은 그림을 찾아요. 맞히면 두 장이 빛나며 남아요.</li>
+          <li>틀리면 잠깐 뒤에 다시 덮여요. 기다리지 않고 바로 다른 카드를 눌러도 돼요.</li>
+          <li>시간 제한은 없어요. 몇 번 뒤집었는지는 다 찾은 뒤에만 보여주고, 크기마다 가장 적게 뒤집은 기록이 남아요.</li>
+          <li>그림은 18가지 중에서 판마다 새로 골라요.</li>
+        </ul>
+        <p class="note">아이폰은 무음 모드에서는 소리가 나지 않아요.</p>
+      </details>
+    </aside>
+  </section>
+</div>
+<input type="checkbox" switch id="hapticSw" class="hapsw" tabindex="-1" aria-hidden="true"><label for="hapticSw" id="hapticLab" class="hapsw" aria-hidden="true"></label>
+
+<script>
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const Sfx=(()=>{
+  let ac=null,out=null,on=store.get('mm_sound',true);
+  function unlock(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}
+  function tone(f,d,{type='sine',vol=.18,slide=0,delay=0}={}){if(!on||!ac||ac.state!=='running')return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03)}
+  const st=n=>Math.pow(2,n/12),SCALE=[0,2,4,7,9,12,14,16,19,21,24,26];
+  return{unlock,get on(){return on},toggle(){on=!on;store.set('mm_sound',on);return on},
+    flip(){tone(520,.06,{type:'triangle',vol:.08})},
+    // each pair found climbs one step of a pentatonic scale
+    match(n){const f=440*st(SCALE[n%SCALE.length]);tone(f,.2,{vol:.16});tone(f*1.5,.24,{vol:.08,delay:.06})},
+    miss(){tone(240,.14,{vol:.08,slide:.8})},
+    win(){[0,4,7,12,16].forEach((s,i)=>tone(523*st(s),.28,{type:'triangle',vol:.13,delay:i*.09}))}};
+})();
+/* haptics: Vibration API (Android) / switch-input trick (iOS 18+, only inside a tap) */
+const Haptic=(()=>{
+  let on=store.get('mm_vib',true);const lab=$('#hapticLab');
+  return{get on(){return on},toggle(){on=!on;store.set('mm_vib',on);return on},
+    tap(){if(!on)return;if(navigator.vibrate)navigator.vibrate(12);else if(lab)lab.click()}};
+})();
+
+// peek: how long every card is shown at the start (longer for bigger boards)
+const SIZES=[{id:'3x4',c:3,r:4,name:'작게',peek:1200},{id:'4x4',c:4,r:4,name:'보통',peek:1600},{id:'4x5',c:4,r:5,name:'크게',peek:2000},{id:'4x6',c:4,r:6,name:'아주 크게',peek:2400}];
+// neon symbols: [svg inner, color]
+const SYM=[
+ ['<path d="M50 8l12 28 30 3-23 20 7 30-26-16-26 16 7-30L8 39l30-3z"/>','#ffc44d'],
+ ['<path d="M50 88C20 66 8 50 8 34 8 20 19 10 31 10c9 0 15 5 19 12 4-7 10-12 19-12 12 0 23 10 23 24 0 16-12 32-42 54z"/>','#ff4fd2'],
+ ['<path d="M64 10A40 40 0 1 0 90 66 32 32 0 1 1 64 10z"/>','#a78bff'],
+ ['<path d="M50 10l42 76H8z"/>','#43f0ff'],
+ ['<circle cx="50" cy="50" r="38"/><circle cx="50" cy="50" r="16"/>','#5dff9e'],
+ ['<path d="M50 6l38 44-38 44-38-44z"/>','#ff4b5e'],
+ ['<path d="M58 6L18 56h28l-6 38 42-52H54z"/>','#ffc44d'],
+ ['<circle cx="50" cy="50" r="22"/><ellipse cx="50" cy="50" rx="44" ry="13" transform="rotate(-20 50 50)"/>','#43f0ff'],
+ ['<path d="M38 74V18l44-8v54"/><circle cx="28" cy="74" r="11"/><circle cx="72" cy="64" r="11"/>','#ff4fd2'],
+ ['<circle cx="50" cy="50" r="9"/><ellipse cx="50" cy="24" rx="11" ry="17"/><ellipse cx="50" cy="24" rx="11" ry="17" transform="rotate(72 50 50)"/><ellipse cx="50" cy="24" rx="11" ry="17" transform="rotate(144 50 50)"/><ellipse cx="50" cy="24" rx="11" ry="17" transform="rotate(216 50 50)"/><ellipse cx="50" cy="24" rx="11" ry="17" transform="rotate(288 50 50)"/>','#5dff9e'],
+ ['<path d="M14 76h72l6-48-22 18-20-30-20 30-22-18z"/><path d="M18 88h64"/>','#ffc44d'],
+ ['<path d="M50 8C50 8 20 46 20 64a30 30 0 0 0 60 0C80 46 50 8 50 8z"/>','#43f0ff'],
+ ['<path d="M28 76h46a18 18 0 0 0 2-36 26 26 0 0 0-50-2 19 19 0 0 0 2 38z"/>','#e8ecf6'],
+ ['<path d="M50 8l38 22v40L50 92 12 70V30z"/>','#a78bff'],
+ ['<path d="M18 86C12 42 38 12 88 12c0 50-28 76-70 74zM18 86L62 40"/>','#5dff9e'],
+ ['<path d="M10 50c18-26 50-28 68 0-18 28-50 26-68 0zM78 50l14-15v30z"/><circle cx="32" cy="46" r="3"/>','#ff4b5e'],
+ ['<circle cx="50" cy="50" r="40"/><circle cx="36" cy="40" r="3"/><circle cx="64" cy="40" r="3"/><path d="M32 60c9 12 27 12 36 0"/>','#ffc44d'],
+ ['<rect x="22" y="22" width="56" height="56" rx="4"/><rect x="22" y="22" width="56" height="56" rx="4" transform="rotate(45 50 50)"/>','#ff4fd2'],
+];
+let size=store.get('mm_size','4x4'),best=store.get('mm_best',{}),wins=store.get('mm_wins',0)|0;
+let deck=[],open=[],found=0,flips=0,peeking=false,shutT=0,peekT=0;
+if(!SIZES.some(s=>s.id===size))size='4x4';
+if(!best||typeof best!=='object')best={};
+const cur=()=>SIZES.find(s=>s.id===size);
+const el=i=>$('#board').children[i];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function renderSizes(){$('#sizes').innerHTML=SIZES.map(s=>`<button class="sz${s.id===size?' on':''}" data-s="${s.id}" type="button">${s.name}<small>${s.c}×${s.r}</small></button>`).join('')}
+function stats(){const S=cur();$('#sSize').textContent=`${S.c}×${S.r}`;$('#sFound').textContent=`${found}/${S.c*S.r/2}`;$('#sBest').textContent=best[size]?best[size]:'-';$('#sWins').textContent=wins}
+function say(t,peek){const m=$('#msg');m.textContent=t;m.classList.toggle('peek',!!peek)}
+function deal(){
+  const S=cur(),n=S.c*S.r/2;clearTimeout(shutT);clearTimeout(peekT);disarm();
+  const picks=shuffle([...SYM.keys()]).slice(0,n);
+  deck=shuffle([...picks,...picks]).map(k=>({k,done:false}));
+  open=[];found=0;flips=0;$('#end').hidden=true;
+  const b=$('#board');b.style.setProperty('--cols',S.c);
+  // keep every row on one phone screen: limit the width by the height the rows need
+  b.style.maxWidth=`min(100%, 480px, calc((100svh - 320px) / ${S.r} * .75 * ${S.c}))`;
+  b.innerHTML=deck.map((d,i)=>{const[svg,c]=SYM[d.k];return`<button class="mc" type="button" data-i="${i}" aria-label="카드 ${i+1}" style="--c:${c}"><div class="in"><div class="face back-f"></div><div class="face front"><svg viewBox="0 0 100 100" fill="none" stroke="${c}" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">${svg}</svg></div></div></button>`}).join('');
+  renderSizes();stats();
+  peeking=true;say('잘 봐 두세요… (카드를 누르면 바로 시작)',true);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{for(const c of b.children)c.classList.add('up')}));
+  peekT=setTimeout(endPeek,S.peek+350);
+}
+function endPeek(){clearTimeout(peekT);if(!peeking)return;peeking=false;for(const c of $('#board').children)c.classList.remove('up');Sfx.flip();say('카드를 두 장씩 뒤집어 같은 그림을 찾아요.')}
+function closeOpen(){clearTimeout(shutT);open.forEach(i=>el(i).classList.remove('up','miss'));open=[]}
+function spark(card,c){const scr=$('.screen'),r=card.getBoundingClientRect(),bx=scr.getBoundingClientRect();
+  for(let k=0;k<10;k++){const s=document.createElement('div');s.className='spark';const a=Math.random()*Math.PI*2,d=30+Math.random()*30;
+    s.style.cssText=`left:${r.left-bx.left+r.width/2}px;top:${r.top-bx.top+r.height/2}px;--c:${c};--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px`;scr.appendChild(s);setTimeout(()=>s.remove(),750)}}
+function tap(i){
+  Sfx.unlock();
+  if(peeking){endPeek();return}
+  const d=deck[i];if(!d||d.done||!$('#end').hidden)return;
+  if(open.length===2)closeOpen();            // a wrong pair still showing: a new tap closes it right away
+  if(open.includes(i))return;
+  el(i).classList.add('up');open.push(i);flips++;Sfx.flip();
+  if(open.length<2)return;
+  const[a,b]=open;
+  if(deck[a].k===deck[b].k){
+    deck[a].done=deck[b].done=true;found++;open=[];Haptic.tap();
+    const n=found-1;
+    setTimeout(()=>{[a,b].forEach(j=>{el(j).classList.add('done');spark(el(j),SYM[deck[j].k][1])});Sfx.match(n)},260);
+    stats();
+    if(found===deck.length/2)setTimeout(win,900);
+  }else{
+    setTimeout(()=>{if(open.length===2&&open[0]===a&&open[1]===b){open.forEach(j=>el(j).classList.add('miss'));Sfx.miss()}},300);
+    shutT=setTimeout(closeOpen,1100);
+  }
+}
+function win(){
+  const prev=best[size],better=!prev||flips<prev,perfect=flips===deck.length;
+  if(better){best[size]=flips;store.set('mm_best',best)}
+  wins++;store.set('mm_wins',wins);
+  $('#endText').textContent=`${flips}번 뒤집었어요`;
+  let r=better&&prev?`내 기록 새로 세움! (전: ${prev}번)`:better?'첫 기록이에요':`내 기록 ${prev}번`;
+  if(perfect)r+=' · 한 번도 안 틀렸어요!';
+  $('#endRec').textContent=r;$('#end').hidden=false;say('');stats();Sfx.win();
+}
+// "새 판" in the middle of a game asks for a second tap so a stray tap doesn't wipe the board
+let armT=0;
+function disarm(){clearTimeout(armT);armT=0;const b=$('#bNew');b.textContent='새 판';b.classList.remove('armed')}
+function askNew(){Sfx.unlock();if(armT||found===0||!$('#end').hidden){deal();return}const b=$('#bNew');b.textContent='한 번 더 누르면 새 판';b.classList.add('armed');armT=setTimeout(disarm,2500)}
+$('#board').addEventListener('click',e=>{const c=e.target.closest('.mc');if(c)tap(+c.dataset.i)});
+$('#board').addEventListener('pointerover',e=>{$('#board').classList.toggle('hov',e.pointerType==='mouse')});
+$('#sizes').addEventListener('click',e=>{const c=e.target.closest('.sz');if(!c)return;Sfx.unlock();size=c.dataset.s;store.set('mm_size',size);deal()});
+$('#bNew').onclick=askNew;$('#bAgain').onclick=()=>{Sfx.unlock();deal()};
+function syncToggles(){
+  const s=$('#bSound'),v=$('#bVib');
+  s.textContent=Sfx.on?'소리 켬':'소리 끔';s.classList.toggle('off',!Sfx.on);s.setAttribute('aria-pressed',String(Sfx.on));
+  v.textContent=Haptic.on?'진동 켬':'진동 끔';v.classList.toggle('off',!Haptic.on);v.setAttribute('aria-pressed',String(Haptic.on));
+}
+$('#bSound').onclick=()=>{Sfx.unlock();Sfx.toggle();syncToggles();Sfx.flip()};
+$('#bVib').onclick=()=>{Haptic.toggle();syncToggles();Haptic.tap()};
+syncToggles();
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+deal();
+</script>
+</html>

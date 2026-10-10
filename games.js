@@ -123,6 +123,18 @@ window.GAMES = [
     tags: ["퍼즐", "드래그"]
   },
   {
+    id: "neon-memory",
+    category: "relax",
+    title: "네온 짝 맞추기",
+    desc: "카드를 두 장씩 뒤집어 같은 네온 그림을 찾는 게임",
+    url: "neon-memory/index.html",
+    thumb: "neon-memory/thumb.svg",
+    color: "#43f0ff",
+    status: "play",
+    meta: "판 크기 4가지",
+    tags: ["편하게", "탭"]
+  },
+  {
     id: "box-push",
     category: "puzzle",
     title: "상자 밀기",

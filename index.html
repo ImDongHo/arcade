@@ -149,6 +149,7 @@ const RECORD_KEYS=[
   'ng_best',                                 // 네온 미니골프
   'nb_best','nb_save',                       // 네온 블록 채우기
   'bp_best','bp_last',                       // 상자 밀기
+  'mm_best','mm_wins',                       // 네온 짝 맞추기
 ];
 {const b=document.getElementById('bReset'),m=document.getElementById('resetMsg'),base=m.textContent;let armed=0,timer=0;
  const disarm=()=>{armed=0;clearTimeout(timer);b.textContent='게임 기록 전체 초기화';b.classList.remove('armed')};
