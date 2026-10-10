@@ -84,10 +84,11 @@ const levels=[],used=new Set();let seed=11;
 CH.forEach((ch,ci)=>ch.st.forEach(([w,h,boxes,wallP,want],k)=>{
   const P={w,h,boxes,wallP,steps:60+want*12};
   let got=null,near=null;
-  for(let t=0;t<40000&&!got;t++){
+  // try at most 6000 rooms per stage; if none hits the target window, use the closest one found
+  for(let t=0;t<6000&&!got;t++){
     const L=make(mulberry(seed++),P);if(!L)continue;
     const sig=L.map.join('/');if(used.has(sig))continue;
-    const sol=solve(L,300000);if(!sol||sol.pushes<boxes*2)continue;
+    const sol=solve(L,200000);if(!sol||sol.pushes<boxes*2)continue;
     const c={map:L.map,min:sol.moves,sig};
     if(sol.moves>=want&&sol.moves<=want+6)got=c;
     else if(!near||Math.abs(sol.moves-want)<Math.abs(near.min-want))near=c;
