@@ -89,6 +89,8 @@ details.card:not([open]){gap:0}
 .end p{margin:0;font-family:var(--f-mono)}
 .end .rec{color:var(--amber);font:600 14px var(--f-body)}
 .end .btn{justify-self:center;font-size:16px;padding:12px 28px}
+.keyhint{font-size:12px;color:var(--muted)}
+@media (hover:none),(pointer:coarse){.keyhint{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}.mc.done .front,.mc.miss .front{animation:none}}
 /* ---- phone layout: board first, compact stats row, thumb bar fixed at the bottom ---- */
 @media (max-width:600px){
@@ -134,6 +136,7 @@ details.card:not([open]){gap:0}
         <p id="endText"></p>
         <div class="rec" id="endRec"></div>
         <button class="btn primary" id="bAgain" type="button">한 판 더</button>
+        <div class="keyhint">Enter / 스페이스로 다음 판</div>
       </div>
     </div>
     <aside class="side">
@@ -276,7 +279,9 @@ function askNew(){Sfx.unlock();if(armT||found===0||!$('#end').hidden){deal();ret
 $('#board').addEventListener('click',e=>{const c=e.target.closest('.mc');if(c)tap(+c.dataset.i)});
 $('#board').addEventListener('pointerover',e=>{$('#board').classList.toggle('hov',e.pointerType==='mouse')});
 $('#sizes').addEventListener('click',e=>{const c=e.target.closest('.sz');if(!c)return;Sfx.unlock();size=c.dataset.s;store.set('mm_size',size);deal()});
-$('#bNew').onclick=askNew;$('#bAgain').onclick=()=>{Sfx.unlock();deal()};
+$('#bNew').onclick=askNew;
+// PC: Enter or Space on the result screen starts the next game
+addEventListener('keydown',e=>{if($('#end').hidden||e.repeat||e.ctrlKey||e.metaKey||e.altKey)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();Sfx.unlock();deal()}});$('#bAgain').onclick=()=>{Sfx.unlock();deal()};
 function syncToggles(){
   const s=$('#bSound'),v=$('#bVib');
   s.textContent=Sfx.on?'소리 켬':'소리 끔';s.classList.toggle('off',!Sfx.on);s.setAttribute('aria-pressed',String(Sfx.on));
