@@ -135,6 +135,18 @@ window.GAMES = [
     tags: ["편하게", "탭"]
   },
   {
+    id: "neon-breakout",
+    category: "arcade",
+    title: "네온 벽돌깨기",
+    desc: "받침대로 공을 튕겨 벽돌을 깨는 게임. 아이템 7가지",
+    url: "neon-breakout/index.html",
+    thumb: "neon-breakout/thumb.svg",
+    color: "#ff4fd2",
+    status: "play",
+    meta: "끝없는 점수 도전",
+    tags: ["아케이드", "드래그"]
+  },
+  {
     id: "box-push",
     category: "puzzle",
     title: "상자 밀기",

@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>네온 벽돌깨기</title>
+<meta name="theme-color" content="#0a0c13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="arcade">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<script src="../shared/zoom-reset.js" defer></script>
+<script src="../shared/enter-next.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+[hidden]{display:none!important}
+/* Layout: canvas board + side panel. Phone: board first, 4-up stats row, buttons in a bottom bar. */
+:root{
+  --bg:#0a0c13; --panel:#10141e; --line:#20283a; --fg:#e7eaf4; --muted:#8b93ad;
+  --pink:#ff4fd2; --cyan:#43f0ff; --amber:#ffc44d; --red:#ff4b5e;
+  --f-display:"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+html{-webkit-text-size-adjust:100%;touch-action:manipulation}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6;padding-inline:16px;padding-block:24px 48px;-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.wrap{max-width:1000px;margin:0 auto;display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 16px}
+.title{display:grid;gap:2px}
+.back{font:600 14px var(--f-body);color:var(--muted);text-decoration:none;width:max-content}
+.back:hover{color:var(--fg)}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);line-height:1.15;margin:0}
+h1 span{color:var(--pink);text-shadow:0 0 18px rgba(255,79,210,.45)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.game{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+@media (max-width:780px){.game{grid-template-columns:1fr}}
+.screen{position:relative;background:#05070c;border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;justify-content:center;min-width:0}
+canvas{display:block;width:100%;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:none}
+.side{display:grid;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font:600 13px var(--f-body);letter-spacing:.08em;color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin:0}
+.stats div{display:grid}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font:700 22px var(--f-mono);font-variant-numeric:tabular-nums}
+.btn{font:600 14px var(--f-body);color:var(--fg);background:#171c2a;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+.btn:hover{border-color:var(--muted)}
+@media (hover:none){.btn:hover{border-color:var(--line)}}
+.btn.primary{background:var(--pink);color:#1a0414;border-color:var(--pink)}
+.btn.off{color:var(--muted);text-decoration:line-through}
+.btn.armed{background:#3a0a2e;border-color:var(--pink);color:#ffd0f2}
+.btn:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+.how{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.note{font-size:13px;color:var(--muted);margin:0}
+details.card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"+";font:700 16px var(--f-mono);color:var(--muted)}
+details.card[open]>summary::after{content:"\2212"}
+details.card:not([open]){gap:0}
+.banner{position:absolute;inset:12px;display:grid;place-content:center;gap:12px;text-align:center;background:rgba(5,7,12,.84);border-radius:10px}
+.banner strong{font-family:var(--f-display);font-weight:400;font-size:40px;color:var(--pink);text-shadow:0 0 22px rgba(255,79,210,.5)}
+.banner .rec{font:700 15px var(--f-mono);color:var(--amber);text-shadow:0 0 14px rgba(255,196,77,.6)}
+.banner p{margin:0;font-family:var(--f-mono)}
+.banner .time{display:block;margin-top:4px;font:500 13px var(--f-body);color:var(--muted)}
+.banner .btn{justify-self:center;font-size:16px;padding:12px 28px}
+.hapsw{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (max-width:600px){
+  body{padding-inline:12px;padding-block:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 92px)}
+  .wrap{gap:10px}.back{font-size:13px}h1{font-size:24px}.game{gap:10px}
+  .screen{padding:6px;border-radius:12px}.banner{inset:6px}.banner strong{font-size:34px}
+  .side{gap:10px}.card{padding:12px}
+  .side>.card:first-child{padding:10px 12px}.side>.card:first-child h2{display:none}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .stats dt{font-size:11px;line-height:1.3}.stats dd{font-size:17px}
+  header .btns{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(16,20,30,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+  header .btns .btn{padding:12px 0;font-size:15px}
+}
+</style>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <a class="back" href="../index.html">&larr; arcade</a>
+      <h1>네온 <span>벽돌깨기</span></h1>
+    </div>
+    <div class="btns">
+      <button class="btn" id="bRestart">다시 시작</button>
+      <button class="btn" id="bPause">일시정지</button>
+      <button class="btn" id="bSound" aria-pressed="true">소리</button>
+      <button class="btn" id="bVib" aria-pressed="true">진동</button>
+    </div>
+  </header>
+  <section class="game">
+    <div class="screen">
+      <canvas id="cv" aria-label="벽돌깨기 게임판"></canvas>
+      <div class="banner" id="pause" hidden>
+        <strong style="color:var(--cyan);text-shadow:0 0 22px rgba(67,240,255,.5)">일시정지</strong>
+        <p class="time" id="pauseText"></p>
+        <div><button class="btn primary" id="bResume">계속하기</button></div>
+      </div>
+      <div class="banner" id="over" hidden>
+        <strong>게임 오버</strong>
+        <div class="rec" id="overRec" hidden>새 최고 기록!</div>
+        <p id="overText"></p>
+        <div><button class="btn primary" id="bAgain">다시 시작</button></div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h2>점수</h2>
+        <dl class="stats">
+          <div><dt>점수</dt><dd id="sScore">0</dd></div>
+          <div><dt>최고 점수</dt><dd id="sBest">0</dd></div>
+          <div><dt>웨이브</dt><dd id="sWave">1</dd></div>
+          <div><dt>목숨</dt><dd id="sLives">♥♥♥</dd></div>
+        </dl>
+      </div>
+      <details class="card" data-auto>
+        <summary><h2>플레이 방법</h2></summary>
+        <ul class="how">
+          <li>폰: 게임판 아무 곳이나 손가락을 대고 좌우로 끌면 받침대가 따라와요. 손을 떼면 공이 날아가요.</li>
+          <li>PC: 마우스를 움직이거나 키보드 ←/→ 로 받침대를 움직여요. 클릭이나 스페이스(↑)로 발사.</li>
+          <li>받침대 가장자리로 받을수록 공이 비스듬히 튀어요.</li>
+          <li>받침대에 닿기 전에 여러 벽돌을 연달아 깨면 콤보 점수!</li>
+          <li>벽돌을 다 깨면 다음 웨이브. 갈수록 단단한 벽돌이 늘고 공이 조금씩 빨라져요.</li>
+          <li>벽돌을 깨면 가끔 아이템이 떨어져요. 받침대로 받으면 돼요.<br>
+            <b style="color:#43f0ff">×3</b> 공 3개 · <b style="color:#5dff9e">◀▶</b> 받침대 넓게 · <b style="color:#ffc44d">◷</b> 공 느리게 ·
+            <b style="color:#ff8a3d">◉</b> 관통 공(벽돌을 뚫고 지나감) · <b style="color:#ff4fd2">↑↑</b> 레이저(자동 발사) ·
+            <b style="color:#a78bff">━</b> 바닥 보호막(한 번 막아 줌, 최대 3겹) · <b style="color:#ff4b5e">♥</b> 목숨 +1</li>
+          <li>일시정지 버튼(PC는 Esc나 P 키)으로 언제든 멈출 수 있어요. 다른 앱으로 가면 자동으로 멈춰요.</li>
+          <li>공을 3번 놓치면 끝나요. 웨이브를 깨면 목숨이 1개 돌아와요(최대 5개).</li>
+        </ul>
+        <p class="note">아이폰은 무음 모드에서는 소리가 나지 않아요.</p>
+      </details>
+    </aside>
+  </section>
+</div>
+<input type="checkbox" switch id="hapticSw" class="hapsw" tabindex="-1" aria-hidden="true"><label for="hapticSw" id="hapticLab" class="hapsw" aria-hidden="true"></label>
+<script>
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const Sfx=(()=>{
+  let ac=null,out=null,on=store.get('bk_sound',true);
+  function unlock(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}
+  function tone(f,d,{type='sine',vol=.18,slide=0,delay=0}={}){if(!on||!ac||ac.state!=='running')return;const t=ac.currentTime+delay,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f*slide),t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03)}
+  const st=n=>Math.pow(2,n/12),SC=[0,2,4,7,9,12,14,16,19,21,24];
+  return{unlock,get on(){return on},toggle(){on=!on;store.set('bk_sound',on);return on},
+    paddle(){tone(330,.06,{type:'triangle',vol:.1})},
+    wall(){tone(220,.03,{type:'triangle',vol:.05})},
+    brick(c){tone(523*st(SC[Math.min(c,SC.length-1)]),.09,{type:'square',vol:.06})},
+    hard(){tone(180,.05,{type:'square',vol:.06})},
+    item(){[0,7,12].forEach((s,i)=>tone(660*st(s),.1,{vol:.1,delay:i*.05}))},
+    lose(){tone(300,.35,{type:'triangle',vol:.14,slide:.3})},
+    wave(){[0,4,7,12,16].forEach((s,i)=>tone(523*st(s),.2,{type:'triangle',vol:.12,delay:i*.07}))},
+    over(){[0,-3,-7,-12].forEach((s,i)=>tone(330*st(s),.3,{type:'triangle',vol:.15,delay:i*.14}))},
+    best(){[0,4,7,12,16,19].forEach((s,i)=>tone(523*st(s),.22,{type:'triangle',vol:.13,delay:i*.08}))}};
+})();
+const Haptic=(()=>{
+  let on=store.get('bk_vib',true);const lab=$('#hapticLab');
+  return{get on(){return on},toggle(){on=!on;store.set('bk_vib',on);return on},
+    tap(){if(!on)return;if(navigator.vibrate)navigator.vibrate(10);else if(lab)lab.click()},
+    bump(ms){if(on&&navigator.vibrate)navigator.vibrate(ms)}};
+})();
+
+const W=360,H=540,dpr=Math.min(3,window.devicePixelRatio||1);
+const cv=$('#cv'),ctx=cv.getContext('2d');
+cv.width=W*dpr;cv.height=H*dpr;cv.style.maxWidth=`min(100%, ${W}px)`;
+const COLS=9,GAP=4,MX=12,BW=(W-MX*2-GAP*(COLS-1))/COLS,BH=14,TOPY=56;
+const PY=H-40,PH=10,BR=6;
+const HPC=['#43f0ff','#ff4fd2','#ffc44d','#ff4b5e'];          // colour by remaining hits
+const ITEMS={M:{c:'#43f0ff',t:'×3'},W:{c:'#5dff9e',t:'◀▶'},S:{c:'#ffc44d',t:'◷'},L:{c:'#ff4b5e',t:'♥'},P:{c:'#ff8a3d',t:'◉'},G:{c:'#ff4fd2',t:'↑↑'},B:{c:'#a78bff',t:'━'}};
+const ITEM_NAME={M:'공 3개!',W:'넓게!',S:'느리게',L:'목숨 +1',P:'관통 공!',G:'레이저!',B:'바닥 보호막'};
+
+let bricks=[],balls=[],drops=[],parts=[],floats=[];
+let score=0,best=store.get('bk_best',0),wave=1,lives=3,over=false,overAt=0,playMs=0,combo=0,maxCombo=0;
+let paused=false,pauseAt=0,px=W/2,pw=76,wideT=0,slowT=0,pierceT=0,laserT=0,shield=0,lasers=[],nextShot=0,shake=0,held=false;
+
+function rnd(a,b){return a+Math.random()*(b-a)}
+// a symmetric brick pattern: harder hits and more rows as waves go on
+function makeWave(n){
+  bricks=[];
+  const rows=Math.min(5+Math.floor(n/2),10),maxHp=Math.min(1+Math.floor((n+1)/3),4);
+  const holes=n>1?.18:0;
+  for(let r=0;r<rows;r++){
+    const half=[];for(let c=0;c<Math.ceil(COLS/2);c++)half.push(Math.random()>holes);
+    for(let c=0;c<COLS;c++){
+      const on=half[c<COLS/2?c:COLS-1-c];if(!on)continue;
+      let hp=1;if(maxHp>1){const t=1-r/rows;hp=1+Math.floor(Math.random()*maxHp*(.4+.6*t));hp=Math.min(hp,maxHp)}
+      bricks.push({x:MX+c*(BW+GAP),y:TOPY+r*(BH+GAP),hp,max:hp,hit:0});
+    }
+  }
+  if(bricks.length<12)return makeWave(n);
+}
+function speed(){return Math.min(4.6+wave*.28,7.2)*(slowT>0?.7:1)}
+function newBall(){balls=[{x:px,y:PY-BR-1,vx:0,vy:0,stuck:true}];combo=0}
+function launch(b){const a=rnd(-.35,.35);b.vx=Math.sin(a)*speed();b.vy=-Math.cos(a)*speed();b.stuck=false}
+function reset(){
+  score=0;wave=1;lives=3;over=false;playMs=0;combo=0;maxCombo=0;pw=76;wideT=0;slowT=0;pierceT=0;laserT=0;shield=0;lasers=[];drops=[];parts=[];floats=[];
+  makeWave(1);newBall();$('#over').hidden=true;setPause(false);disarm();hud();
+  floats.push({x:W/2,y:H*.6,text:matchMedia('(hover:hover) and (pointer:fine)').matches?'클릭 또는 스페이스로 발사!':'손을 떼면 발사!',c:'#e7eaf4',t0:performance.now(),size:16,life:1800});
+}
+function hud(){
+  $('#sScore').textContent=score.toLocaleString();$('#sBest').textContent=best.toLocaleString();
+  $('#sWave').textContent=wave;$('#sLives').textContent=lives>0?'♥'.repeat(lives):'-';
+}
+const fmtPlay=ms=>{const s=Math.max(1,Math.round(ms/1000)),m=Math.floor(s/60);return((m?m+'분 ':'')+(s%60||!m?s%60+'초':'')).trim()};
+function burst(x,y,c,n=10){for(let k=0;k<n;k++){const a=Math.random()*Math.PI*2,sp=rnd(1,3.2);parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,c,t0:performance.now(),life:rnd(300,600)})}}
+function hitBrick(br,now){
+  br.hp--;br.hit=now;
+  if(br.hp>0){Sfx.hard();score+=2;return}
+  combo++;maxCombo=Math.max(maxCombo,combo);
+  const pts=10*br.max+(combo>1?(combo-1)*5:0);score+=pts;
+  burst(br.x+BW/2,br.y+BH/2,HPC[br.max-1]);Sfx.brick(combo-1);
+  if(combo>=3)floats.push({x:br.x+BW/2,y:br.y,text:'+'+pts,c:'#ffc44d',t0:now,size:12+Math.min(combo,8),life:700});
+  if(Math.random()<.12){const keys=lives<5?'MMWWSPGBL':'MMWWSPGB';drops.push({x:br.x+BW/2,y:br.y+BH/2,k:keys[Math.floor(Math.random()*keys.length)]})}
+  bricks.splice(bricks.indexOf(br),1);
+  hud();
+}
+function step(now){
+  const pl=px-pw/2,pr=px+pw/2;
+  for(const b of balls){
+    if(b.stuck){b.x=px;b.y=PY-BR-1;continue}
+    const sub=4;
+    for(let s=0;s<sub;s++){
+      b.x+=b.vx/sub;b.y+=b.vy/sub;
+      if(b.x<BR){b.x=BR;b.vx=Math.abs(b.vx);Sfx.wall()}
+      if(b.x>W-BR){b.x=W-BR;b.vx=-Math.abs(b.vx);Sfx.wall()}
+      if(b.y<BR){b.y=BR;b.vy=Math.abs(b.vy);Sfx.wall()}
+      // paddle: the further from the centre, the wider the bounce angle
+      if(b.vy>0&&b.y+BR>=PY&&b.y+BR<=PY+PH+6&&b.x>=pl-BR&&b.x<=pr+BR){
+        const off=Math.max(-1,Math.min(1,(b.x-px)/(pw/2))),a=off*1.05,v=speed();
+        b.vx=Math.sin(a)*v;b.vy=-Math.cos(a)*v;b.y=PY-BR;combo=0;Sfx.paddle();Haptic.tap();
+      }
+      // bricks: reflect on the axis with the smaller overlap
+      for(const br of bricks){
+        const cx=Math.max(br.x,Math.min(b.x,br.x+BW)),cy=Math.max(br.y,Math.min(b.y,br.y+BH));
+        const dx=b.x-cx,dy=b.y-cy;if(dx*dx+dy*dy>BR*BR)continue;
+        if(pierceT>0){br.hp=1;hitBrick(br,now);break}
+        const ox=Math.min(b.x+BR-br.x,br.x+BW-(b.x-BR)),oy=Math.min(b.y+BR-br.y,br.y+BH-(b.y-BR));
+        if(ox<oy){b.vx=b.x<br.x+BW/2?-Math.abs(b.vx):Math.abs(b.vx)}else{b.vy=b.y<br.y+BH/2?-Math.abs(b.vy):Math.abs(b.vy)}
+        hitBrick(br,now);break;
+      }
+    }
+    if(shield>0&&b.vy>0&&b.y+BR>=H-10){b.y=H-10-BR;b.vy=-Math.abs(b.vy);shield--;combo=0;Sfx.paddle();burst(b.x,H-10,'#a78bff',14)}
+    // keep the speed in step with wave / slow item, and never let it go nearly flat
+    const v=Math.hypot(b.vx,b.vy)||1,tv=speed();b.vx*=tv/v;b.vy*=tv/v;
+    if(Math.abs(b.vy)<tv*.28){b.vy=Math.sign(b.vy||-1)*tv*.28;const k=Math.sqrt(tv*tv-b.vy*b.vy);b.vx=Math.sign(b.vx||1)*k}
+  }
+  const before=balls.length;balls=balls.filter(b=>b.y<H+BR*2);
+  if(before&&!balls.length){
+    lives--;Sfx.lose();Haptic.bump(80);shake=8;hud();
+    if(lives<=0){gameOver();return}
+    pw=76;wideT=0;slowT=0;pierceT=0;laserT=0;lasers=[];drops=[];newBall();
+    floats.push({x:W/2,y:H*.6,text:`남은 목숨 ${'♥'.repeat(lives)}`,c:'#ff4b5e',t0:now,size:18,life:1400});
+  }
+  for(const d of drops){d.y+=2.2;
+    if(d.y>=PY-6&&d.y<=PY+PH+6&&d.x>=pl-10&&d.x<=pr+10){d.got=true;Sfx.item();Haptic.tap();
+      if(d.k==='M'){const src=balls.find(b=>!b.stuck)||balls[0];if(src){for(const a of[-.5,.5]){const v=speed();balls.push({x:src.x,y:src.y,vx:Math.sin(a)*v,vy:-Math.cos(a)*v,stuck:false})}if(src.stuck)launch(src)}}
+      if(d.k==='W'){pw=116;wideT=12000}
+      if(d.k==='S'){slowT=10000}
+      if(d.k==='L'){lives=Math.min(5,lives+1);hud()}
+      if(d.k==='P')pierceT=8000;
+      if(d.k==='G'){laserT=8000;nextShot=0}
+      if(d.k==='B')shield=Math.min(3,shield+1);
+      floats.push({x:d.x,y:PY-20,text:ITEM_NAME[d.k],c:ITEMS[d.k].c,t0:now,size:14,life:800});
+    }}
+  drops=drops.filter(d=>!d.got&&d.y<H+10);
+  if(laserT>0&&balls.some(b=>!b.stuck)&&now>=nextShot){nextShot=now+380;lasers.push({x:pl+4,y:PY},{x:pr-4,y:PY});Sfx.wall()}
+  for(const l of lasers){l.y-=8;for(const br of bricks)if(l.x>=br.x&&l.x<=br.x+BW&&l.y<=br.y+BH&&l.y>=br.y-8){l.dead=true;hitBrick(br,now);break}}
+  lasers=lasers.filter(l=>!l.dead&&l.y>0);
+  if(!bricks.length){
+    wave++;lives=Math.min(5,lives+1);score+=100*wave;Sfx.wave();Haptic.bump(40);
+    floats.push({x:W/2,y:H*.5,text:`웨이브 ${wave}`,c:'#43f0ff',t0:now,size:30,life:1600});
+    makeWave(wave);drops=[];lasers=[];newBall();hud();
+  }
+}
+// pause: freezes everything (play time too); the board is drawn once and then left alone
+function setPause(v){
+  if(v&&over)return;paused=v;pauseAt=performance.now();keys.left=keys.right=false;held=false;
+  $('#pause').hidden=!v;const b=$('#bPause');b.textContent=v?'계속하기':'일시정지';b.setAttribute('aria-pressed',String(v));
+  if(v)$('#pauseText').textContent=`점수 ${score.toLocaleString()} · 웨이브 ${wave}`;
+  last=performance.now();acc=0;
+}
+function gameOver(){
+  over=true;overAt=performance.now();const rec=score>best;
+  if(rec){best=score;store.set('bk_best',best);Sfx.best()}else Sfx.over();
+  Haptic.bump(120);
+  $('#overRec').hidden=!rec;
+  $('#overText').innerHTML=`점수 ${score.toLocaleString()} · 웨이브 ${wave}${maxCombo>2?` · 최대 콤보 ${maxCombo}`:''}<span class="time">플레이 시간 ${fmtPlay(playMs)}</span>`;
+  $('#over').hidden=false;hud();
+}
+// input: finger anywhere on the board moves the paddle; lifting the finger launches a waiting ball
+const toX=e=>{const r=cv.getBoundingClientRect();return(e.clientX-r.left)*W/r.width};
+cv.addEventListener('pointerdown',e=>{Sfx.unlock();if(over||paused)return;held=true;cv.setPointerCapture?.(e.pointerId);px=toX(e)});
+cv.addEventListener('pointermove',e=>{if(over||paused)return;if(held||e.pointerType==='mouse')px=toX(e)});
+const release=e=>{if(!held&&e.pointerType!=='mouse')return;held=false;if(over||paused)return;for(const b of balls)if(b.stuck)launch(b)};
+cv.addEventListener('pointerup',release);
+cv.addEventListener('pointercancel',()=>{held=false});
+{let lastTap=0;$('.screen').addEventListener('touchend',e=>{if(e.target.closest('.banner'))return;if(e.timeStamp-lastTap<400)e.preventDefault();lastTap=e.timeStamp},{passive:false})}
+// PC keyboard: ←/→ (or A/D) move the paddle while held, Space or ↑ launches
+const keys={left:false,right:false};
+addEventListener('keydown',e=>{
+  if(over||e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey)return;
+  const k=e.key;
+  if(k==='Escape'||k==='p'||k==='P'){e.preventDefault();setPause(!paused);return}
+  if(paused){if(k===' '||k==='Enter'){e.preventDefault();setPause(false)}return}
+  if(k==='ArrowLeft'||k==='a'||k==='A'){keys.left=true;e.preventDefault()}
+  else if(k==='ArrowRight'||k==='d'||k==='D'){keys.right=true;e.preventDefault()}
+  else if(k===' '||k==='ArrowUp'){e.preventDefault();Sfx.unlock();for(const b of balls)if(b.stuck)launch(b)}
+});
+addEventListener('keyup',e=>{const k=e.key;if(k==='ArrowLeft'||k==='a'||k==='A')keys.left=false;if(k==='ArrowRight'||k==='d'||k==='D')keys.right=false});
+addEventListener('blur',()=>{keys.left=keys.right=false});
+
+let armT=0,armTimer=0;
+function disarm(){armT=0;clearTimeout(armTimer);const b=$('#bRestart');b.textContent='다시 시작';b.classList.remove('armed')}
+$('#bRestart').onclick=()=>{Sfx.unlock();if(over||score<50||armT){reset();return}armT=1;const b=$('#bRestart');b.textContent='한 번 더 누르면 다시 시작';b.classList.add('armed');armTimer=setTimeout(disarm,2500)};
+$('#bAgain').onclick=()=>{Sfx.unlock();reset()};
+$('#bPause').onclick=()=>{Sfx.unlock();setPause(!paused)};
+$('#bResume').onclick=()=>{Sfx.unlock();setPause(false)};
+// leaving the app or switching tabs pauses a running game
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&!over&&!paused&&balls.some(b=>!b.stuck))setPause(true)});
+function syncToggles(){
+  const s=$('#bSound'),v=$('#bVib');
+  s.textContent=Sfx.on?'소리 켬':'소리 끔';s.classList.toggle('off',!Sfx.on);s.setAttribute('aria-pressed',String(Sfx.on));
+  v.textContent=Haptic.on?'진동 켬':'진동 끔';v.classList.toggle('off',!Haptic.on);v.setAttribute('aria-pressed',String(Haptic.on));
+}
+$('#bSound').onclick=()=>{Sfx.unlock();Sfx.toggle();syncToggles();Sfx.paddle()};
+$('#bVib').onclick=()=>{Haptic.toggle();syncToggles();Haptic.tap()};
+syncToggles();
+
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+let last=performance.now(),acc=0;
+function frame(now){
+  requestAnimationFrame(frame);
+  // after the game-over effects settle, stop redrawing the frozen board to save battery
+  if(over&&now-overAt>2000){last=now;return}
+  if(paused&&now-pauseAt>50){last=now;return}
+  const dt=Math.min(50,now-last);last=now;
+  if(!over&&!paused){
+    if(balls.some(b=>!b.stuck))playMs+=dt;   // shown on the result screen only
+    acc+=dt;let n=0;while(acc>=1000/60&&n<4){step(now);acc-=1000/60;n++;if(over)break}if(acc>100)acc=0;
+    if(wideT>0){wideT-=dt;if(wideT<=0)pw=76}
+    if(slowT>0)slowT-=dt;
+    if(pierceT>0)pierceT-=dt;
+    if(laserT>0)laserT-=dt;
+  }
+  if(!over&&!paused&&(keys.left!==keys.right))px+=(keys.right?1:-1)*.36*dt;
+  px=Math.max(pw/2,Math.min(W-pw/2,px));
+  const sx=shake?(Math.random()-.5)*shake:0,sy=shake?(Math.random()-.5)*shake:0;shake=Math.max(0,shake-dt*.03);if(shake<.3)shake=0;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.translate(sx,sy);
+  rr(0,0,W,H,12);ctx.fillStyle='#070a12';ctx.fill();
+  ctx.strokeStyle='rgba(130,150,200,.05)';ctx.lineWidth=1;for(let y=TOPY;y<H;y+=24){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  // bricks
+  for(const br of bricks){
+    const c=HPC[br.hp-1],flash=now-br.hit<90;
+    ctx.save();ctx.shadowColor=c;ctx.shadowBlur=flash?16:8;
+    rr(br.x,br.y,BW,BH,3);ctx.fillStyle=flash?'rgba(255,255,255,.5)':c+'26';ctx.fill();ctx.lineWidth=1.5;ctx.strokeStyle=c;ctx.stroke();
+    if(br.max>1){ctx.shadowBlur=0;ctx.fillStyle=c;for(let k=0;k<br.hp;k++){ctx.fillRect(br.x+BW/2-(br.hp-1)*3+k*6-1,br.y+BH/2-1,2,2)}}
+    ctx.restore();
+  }
+  // drops
+  for(const d of drops){const it=ITEMS[d.k];ctx.save();ctx.shadowColor=it.c;ctx.shadowBlur=10;rr(d.x-13,d.y-8,26,16,8);ctx.fillStyle='#0b0f19';ctx.fill();ctx.strokeStyle=it.c;ctx.lineWidth=1.5;ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle=it.c;ctx.font='700 10px "JetBrains Mono",monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(it.t,d.x,d.y+1);ctx.restore()}
+  ctx.save();ctx.strokeStyle='#ff4fd2';ctx.shadowColor='#ff4fd2';ctx.shadowBlur=8;ctx.lineWidth=2;for(const l of lasers){ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(l.x,l.y+10);ctx.stroke()}ctx.restore();
+  if(shield>0){ctx.save();ctx.strokeStyle='#a78bff';ctx.shadowColor='#a78bff';ctx.shadowBlur=10;ctx.lineWidth=2+shield;ctx.globalAlpha=.6+.3*Math.sin(now/200);ctx.beginPath();ctx.moveTo(6,H-10);ctx.lineTo(W-6,H-10);ctx.stroke();ctx.restore()}
+  // paddle
+  if(!over||now-overAt<600){
+    const pc=wideT>0?'#5dff9e':'#43f0ff';
+    ctx.save();ctx.shadowColor=pc;ctx.shadowBlur=14;rr(px-pw/2,PY,pw,PH,PH/2);ctx.fillStyle=pc;ctx.fill();
+    if(laserT>0){ctx.fillStyle='#ff4fd2';ctx.shadowColor='#ff4fd2';ctx.fillRect(px-pw/2+2,PY-5,4,6);ctx.fillRect(px+pw/2-6,PY-5,4,6)}ctx.restore();
+  }
+  // balls (+ aim guide while waiting)
+  for(const b of balls){
+    if(b.stuck){ctx.save();ctx.setLineDash([2,6]);ctx.strokeStyle='rgba(231,234,244,.25)';ctx.beginPath();ctx.moveTo(b.x,b.y-BR-2);ctx.lineTo(b.x,b.y-70);ctx.stroke();ctx.restore()}
+    ctx.save();const bc=pierceT>0?'#ff8a3d':slowT>0?'#ffc44d':'#fff';ctx.shadowColor=bc;ctx.shadowBlur=pierceT>0?20:14;ctx.beginPath();ctx.arc(b.x,b.y,BR,0,7);ctx.fillStyle=pierceT>0?'#ffd2b0':'#fff';ctx.fill();ctx.restore();
+  }
+  parts=parts.filter(p=>now-p.t0<p.life);
+  ctx.save();for(const p of parts){const t=(now-p.t0)/p.life;p.x+=p.vx*dt/16;p.y+=p.vy*dt/16;p.vy+=.06*dt/16;ctx.globalAlpha=1-t;ctx.fillStyle=p.c;ctx.shadowColor=p.c;ctx.shadowBlur=6;ctx.fillRect(p.x-1.5,p.y-1.5,3,3)}ctx.restore();
+  floats=floats.filter(f=>now-f.t0<f.life);
+  for(const f of floats){const t=(now-f.t0)/f.life;ctx.save();ctx.globalAlpha=t<.7?1:1-(t-.7)/.3;ctx.fillStyle=f.c;ctx.shadowColor=f.c;ctx.shadowBlur=12;ctx.font=`700 ${f.size}px "JetBrains Mono","Black Han Sans",monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.text,f.x,f.y-t*24);ctx.restore()}
+  // HUD: lives and active items, top-left
+  ctx.save();ctx.font='700 12px "JetBrains Mono",monospace';ctx.textAlign='left';ctx.fillStyle='#ff4b5e';ctx.fillText('♥'.repeat(Math.max(0,lives)),10,22);
+  let hx=W-10;ctx.textAlign='right';
+  if(slowT>0){ctx.fillStyle='#ffc44d';ctx.fillText('◷ '+Math.ceil(slowT/1000),hx,22);hx-=46}
+  if(wideT>0){ctx.fillStyle='#5dff9e';ctx.fillText('◀▶ '+Math.ceil(wideT/1000),hx,22);hx-=52}
+  if(pierceT>0){ctx.fillStyle='#ff8a3d';ctx.fillText('◉ '+Math.ceil(pierceT/1000),hx,22);hx-=44}
+  if(laserT>0){ctx.fillStyle='#ff4fd2';ctx.fillText('↑↑ '+Math.ceil(laserT/1000),hx,22)}
+  ctx.restore();
+}
+if(matchMedia('(min-width:601px)').matches)document.querySelectorAll('details[data-auto]').forEach(d=>d.open=true);
+reset();requestAnimationFrame(frame);
+</script>
+</html>
