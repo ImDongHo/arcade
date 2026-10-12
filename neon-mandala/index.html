@@ -230,17 +230,17 @@ cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
  add('rainbow','무지개');['시안','핑크','노랑','초록','보라','주황','하양'].forEach((n,i)=>add(COLORS[i],n));}
 {const box=$('#syms');
  [4,6,8,12].forEach(n=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=n+'방향';b.setAttribute('aria-pressed',String(n===sym));
-   b.onclick=()=>{sym=n;box.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));redraw()};box.appendChild(b)});}
+   b.onclick=()=>{sym=n;box.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));redraw();cache=null};box.appendChild(b)});}
 document.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{width=+b.dataset.w;document.querySelectorAll('[data-w]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
 $('#bMirror').onclick=()=>{mirror=!mirror;$('#bMirror').setAttribute('aria-pressed',String(mirror))};
-$('#bUndo').onclick=()=>{strokes.pop();redraw();$('#bUndo').disabled=!strokes.length};
+$('#bUndo').onclick=()=>{strokes.pop();redraw();cache=null;$('#bUndo').disabled=!strokes.length};
 // clearing needs a second tap within 2.5s so a stray tap never wipes a drawing
 let armT=0,armTimer=0;
 function disarm(){armT=0;clearTimeout(armTimer);const b=$('#bClear');b.textContent='새로 그리기';b.classList.remove('armed')}
 $('#bClear').onclick=()=>{
   if(!strokes.length)return;
   if(!armT){armT=1;const b=$('#bClear');b.textContent='한 번 더 누르면 지워져요';b.classList.add('armed');armTimer=setTimeout(disarm,2500);return}
-  disarm();strokes=[];spin=0;redraw();$('#bUndo').disabled=true;$('#hint').style.opacity=1;
+  disarm();if(spinning)stopSpin();strokes=[];spin=0;redraw();$('#bUndo').disabled=true;$('#hint').style.opacity=1;
 };
 // spin slowly so the finished mandala can be admired; touching the pad stops it
 let lastT=0;
