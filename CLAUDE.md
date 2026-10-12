@@ -12,6 +12,8 @@
   status: soon(준비 중)은 썸네일만 먼저 걸어 두는 카드로, 눌러도 이동하지 않는다. 게임을 만들면 play로 바꾼다.
 - 게임마다 폴더 하나: index.html(게임 전체가 한 파일) + thumb.svg(320×200 네온 썸네일).
 - shared/zoom-reset.js: 확대 상태에서 "원래 크기로" 버튼. 모든 페이지에 포함.
+- shared/enter-next.js: PC에서 결과 화면이 떠 있을 때 Enter/스페이스로 강조 버튼(.btn.primary)을 누름.
+  결과 화면(.banner/.end/.cele)이 있는 게임 페이지에 모두 포함. 결과 화면의 주 버튼에 btn primary를 붙인다.
 - icons/: 홈 화면 아이콘. tools/: 레벨 생성기(node).
 
 ## 게임 규칙
